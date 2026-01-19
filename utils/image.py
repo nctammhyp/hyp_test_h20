@@ -84,9 +84,20 @@ def rgb2gray(I: np.ndarray, channel_wise_mean=True) -> np.ndarray:
 def imrescale(image: np.ndarray, scale: float) -> np.ndarray:
     image = toNumpy(image)
     dtype = image.dtype
-    multi_channel = True if len(image.shape) == 3 else False
-    out = skimage.transform.rescale(image, scale, 
-        multichannel=multi_channel, preserve_range=True)
+    
+    # In newer skimage versions, 'multichannel' is replaced by 'channel_axis'
+    # channel_axis=-1 means the last dimension is the color channel (H, W, C)
+    # channel_axis=None means it is a grayscale image (H, W)
+    c_axis = -1 if len(image.shape) == 3 else None
+    
+    out = skimage.transform.rescale(
+        image, 
+        scale, 
+        channel_axis=c_axis, 
+        preserve_range=True, 
+        anti_aliasing=True # Recommended when downscaling
+    )
+    
     return out.astype(dtype)
 
 imresize = skimage.transform.resize
