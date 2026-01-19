@@ -1,0 +1,8 @@
+__pycache__/
+checkpoints
+itbt_sample
+module/__pycache__/
+omnidata
+results
+runs
+outputs
