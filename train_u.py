@@ -152,7 +152,7 @@ def train(epoch_total, load_state):
     start_epoch = 0
     if load_state:
         if opts.snapshot_path and osp.exists(opts.snapshot_path):
-            snapshot = torch.load(opts.snapshot_path)
+            snapshot = torch.load(opts.snapshot_path, weights_only=False)
             if 'net_state_dict' in snapshot.keys():
                 net.load_state_dict(snapshot['net_state_dict'])
                 LOG_INFO('checkpoint %s is loaded' % (opts.snapshot_path))
