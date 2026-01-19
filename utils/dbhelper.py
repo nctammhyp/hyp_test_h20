@@ -54,8 +54,8 @@ __load_train_sunset = __load_train_cloudy = __load_train_sunny
 
 
 def __load_train_omnithings(opts):
-    opts.train_idx = list(range(1, 50))
-    opts.test_idx = list(range(45, 50))
+    opts.train_idx = list(range(1, 950))
+    opts.test_idx = list(range(950, 1000))
     opts.gt_phi = 90
     return opts
 

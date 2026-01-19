@@ -152,18 +152,18 @@ def normalizeImage(image: np.ndarray, mask=None,
 
 ## image file I/O =================================
 
-def writeImageFloat(image: np.ndarray, tiff_path: str, thumbnail = None):
+
+def writeImageFloat(image: np.ndarray, tiff_path: str, thumbnail=None):
     image = toNumpy(image)
     with tifffile.TiffWriter(tiff_path) as tiff:
         if thumbnail is not None:
-            if not thumbnail.dtype == np.uint8:
+            if thumbnail.dtype != np.uint8:
                 thumbnail = thumbnail.astype(np.uint8)
-            tiff.save(thumbnail, photometric='RGB', planarconfig='CONTIG',
-                bitspersample=8)
-        if not image.dtype == np.float32:
+            tiff.write(thumbnail, photometric='rgb', planarconfig='contig', bitspersample=8)
+
+        if image.dtype != np.float32:
             image = image.astype(np.float32)
-        tiff.save(image, photometric='MINISBLACK', planarconfig='CONTIG',
-                bitspersample=32, compress=9)
+        tiff.write(image, photometric='minisblack', planarconfig='contig', bitspersample=32, compression='zlib')
 
 def readImageFloat(tiff_path: str, return_thumbnail = False,
                    read_or_die = True):

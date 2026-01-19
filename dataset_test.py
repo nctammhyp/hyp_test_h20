@@ -28,6 +28,8 @@ from utils.image import *
 import utils.dbhelper
 import cv2
 
+import glob
+
 
 def getEquirectCoordinate(pts: np.ndarray, equirect_size: (int, int),
                           phi_deg: float, phi2_deg=-1.0):
@@ -94,7 +96,7 @@ class Dataset(torch.utils.data.Dataset):
         opts.max_depth = 1 / EPS
         opts.max_fov = 220.0  # maximum FOV of input fisheye images
         opts.read_input_image = True  # for evaluation, False if read only GT
-        opts.start, opts.step, opts.end = 1, 1, 1000  # frame
+        opts.start, opts.step, opts.end = 1, 1, 3  # frame
         opts.train_idx, opts.test_idx = [], []
         opts.gt_phi = 0.0
         opts.dtype = 'nogt'
@@ -106,6 +108,23 @@ class Dataset(torch.utils.data.Dataset):
         # update opts from the argument
         opts.lut_fmt = 'RoS_ds%d_lt_(%d,%d,%d).hwd'  # lookup table fmt [ds, equi_h, w, d]
         opts = argparse(opts, db_opts)
+
+
+        # ------------------ đếm số ảnh tự động ------------------
+        cam_folder = os.path.join(self.db_path, 'cam1')
+        img_files = sorted(glob.glob(os.path.join(cam_folder, '*.png')))
+        num_frames = len(img_files)
+        opts.start, opts.step, opts.end = 1, 1, num_frames
+        self.frame_idx = list(range(opts.start, opts.end + opts.step, opts.step))
+
+        print(f"---------------------------------------------------------------")
+        print(f'Number of frames in the dataset "{self.dbname}": {num_frames}')
+
+        # ------------------ chia train/test 80/20 ------------------
+        num_train = int(num_frames * 0.8)
+        self.train_idx = self.frame_idx[:num_train]
+        self.test_idx = self.frame_idx[num_train:]
+
 
         # set member variables
         self.opts = opts
