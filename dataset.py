@@ -238,8 +238,8 @@ class Dataset(torch.utils.data.Dataset):
     def readInvdepth(self, path: str) -> np.ndarray:
         _, ext = osp.splitext(path)
         if ext == '.png':
-            print("------------------- load png depth ---------------------------")
-            step_invdepth = (self.max_invdepth - self.min_invdepth) / 65500.0
+            # print("------------------- load png depth ---------------------------")
+            step_invdepth = (self.max_invdepth - self.min_invdepth) / 255.0
             quantized_inv_index = readImage(path).astype(np.float32)
             if len(quantized_inv_index.shape) == 3:
                 print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
@@ -254,7 +254,7 @@ class Dataset(torch.utils.data.Dataset):
     def writeInvdepth(self, invdepth: np.ndarray, path: str) -> None:
         _, ext = osp.splitext(path)
         if ext == '.png':
-            step_invdepth = (self.max_invdepth - self.min_invdepth) / 65500.0
+            step_invdepth = (self.max_invdepth - self.min_invdepth) / 255.0
             quantized_inv_index = (invdepth - self.min_invdepth) / step_invdepth
             writeImage(quantized_inv_index.round().astype(np.uint16), path)
         elif ext == '.tif' or ext == '.tiff':

@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 try:
     from torch.cuda.amp import GradScaler
@@ -193,7 +194,8 @@ def train(epoch_total, load_state):
         epoch_loss = 0
         LOG_INFO('\nEpoch: %d' % epoch)
         # acc_total=0
-        for step, data_blob in enumerate(dbloader):
+        # for step, data_blob in enumerate(dbloader):
+        for step, data_blob in enumerate(tqdm(dbloader, total=len(dbloader), desc="Processing")):
             start_time = time.time()
             imgs, gt, valid, raw_imgs = data_blob
 
