@@ -573,21 +573,33 @@ class Augmentor:
         return images
 
     def eraser_transform(self, images, bounds=[50, 100]):
-        """ Occlusion augmentation """
+            """ Occlusion augmentation """
 
-        ht, wd = images[0].shape[:2]
-        if np.random.rand() < self.eraser_aug_prob:
-            for i in [1, 2]:
-                mean_color = np.mean(images[i].reshape(-1, 3), axis=0)
-                for _ in range(np.random.randint(1, 3)):
-                    x0 = np.random.randint(0, wd)
-                    y0 = np.random.randint(0, ht)
-                    dx = np.random.randint(bounds[0], bounds[1])
-                    dy = np.random.randint(bounds[0], bounds[1])
-                    images[i][y0:y0 + dy, x0:x0 + dx, :] = mean_color
+            ht, wd = images[0].shape[:2]
+            if np.random.rand() < self.eraser_aug_prob:
+                for i in [1, 2]:
+                    # Check if the image is Grayscale (2D) or RGB (3D)
+                    is_gray = len(images[i].shape) == 2
+                    
+                    if is_gray:
+                        mean_color = np.mean(images[i])
+                    else:
+                        # Original logic for RGB: calculate mean per channel
+                        mean_color = np.mean(images[i].reshape(-1, images[i].shape[-1]), axis=0)
+                    
+                    for _ in range(np.random.randint(1, 3)):
+                        x0 = np.random.randint(0, wd)
+                        y0 = np.random.randint(0, ht)
+                        dx = np.random.randint(bounds[0], bounds[1])
+                        dy = np.random.randint(bounds[0], bounds[1])
+                        
+                        # Apply indexing based on dimensionality
+                        if is_gray:
+                            images[i][y0:y0 + dy, x0:x0 + dx] = mean_color
+                        else:
+                            images[i][y0:y0 + dy, x0:x0 + dx, :] = mean_color
 
-        return images
-
+            return images
 
     def __call__(self, raw_images):
         images = self.color_transform(raw_images)
