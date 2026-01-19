@@ -278,6 +278,12 @@ class Dataset(torch.utils.data.Dataset):
         h, w = self.equirect_size
         gt_depth_file = osp.join(self.db_path, self.gt_depth_fmt % (w, fidx))
         gt = self.readInvdepth(gt_depth_file)
+
+        # --- SỬA TẠI ĐÂY: Resize GT để khớp với equirect_size ---
+        if gt.shape[1] != w or gt.shape[0] != h:
+            # Sử dụng INTER_NEAREST để tránh tạo ra các giá trị nội suy giả cho index
+            gt = cv2.resize(gt, (w, h), interpolation=cv2.INTER_NEAREST)
+
         gt_h = gt.shape[0]
         # crop height
         if h < gt_h:
