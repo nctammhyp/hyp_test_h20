@@ -214,7 +214,7 @@ def train(epoch_total, load_state):
 
             epoch_loss = train_loss / (step + 1)
 
-            if step % 200 == 0:
+            if step % 50 == 0:
                 LOG_INFO("Iter %d training loss = %.3f, average training loss for every step = %.3f, \
                     time = %.2f" % (total_iters, loss, epoch_loss, time.time() - start_time))
                 writer.add_scalar("train/loss", loss, total_iters)
