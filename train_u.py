@@ -121,14 +121,24 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def fetch_optimizer(model, num_steps):
+# def fetch_optimizer(model, num_steps):
+#     """ Create the optimizer and learning rate scheduler """
+#     optimizer = optim.AdamW(model.parameters(), lr=opts.lr, weight_decay=opts.wdecay, eps=1e-8)
+
+#     scheduler = optim.lr_scheduler.OneCycleLR(optimizer, opts.lr, num_steps+100,
+#                                               pct_start=0.01, cycle_momentum=False, anneal_strategy='linear')
+
+#     return optimizer, scheduler
+
+
+def fetch_optimizer(model):
     """ Create the optimizer and learning rate scheduler """
     optimizer = optim.AdamW(model.parameters(), lr=opts.lr, weight_decay=opts.wdecay, eps=1e-8)
 
-    scheduler = optim.lr_scheduler.OneCycleLR(optimizer, opts.lr, num_steps+100,
-                                              pct_start=0.01, cycle_momentum=False, anneal_strategy='linear')
+    # scheduler = optim.lr_scheduler.OneCycleLR(optimizer, opts.lr, num_steps+100,
+    #                                           pct_start=0.01, cycle_momentum=False, anneal_strategy='linear')
 
-    return optimizer, scheduler
+    return optimizer
 
 
 def train(epoch_total, load_state):
@@ -146,7 +156,9 @@ def train(epoch_total, load_state):
         net.module.freeze_bn()
     LOG_INFO("Parameter Count: %d" % count_parameters(net))
 
-    optimizer, scheduler = fetch_optimizer(net, total_num_steps)
+    # optimizer, scheduler = fetch_optimizer(net, total_num_steps)
+    optimizer = fetch_optimizer(net)
+
     scaler = GradScaler(enabled=opts.net_opts.mixed_precision)
 
     start_epoch = 0
@@ -223,7 +235,7 @@ def train(epoch_total, load_state):
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             scaler.step(optimizer)
-            scheduler.step()
+            # scheduler.step()
             scaler.update()
 
             total_iters += 1
