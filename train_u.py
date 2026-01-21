@@ -47,7 +47,9 @@ parser.add_argument('--name', default='ROmniStereo', help="name of your experime
 parser.add_argument('--restore_ckpt', help="restore checkpoint")
 parser.add_argument('--pretrain_ckpt', help="pretrained checkpoint for finetuning")
 
-parser.add_argument('--db_root', default='/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/', type=str, help='path to dataset')
+parser.add_argument('--db_root', default='/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/hyp_data_01_trainable/', type=str, help='path to dataset')
+# parser.add_argument('--db_root', default=r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable", type=str, help='path to dataset')
+
 parser.add_argument('--dbname', nargs='+', default=['omnithings'], type=str,
                     choices=['omnithings', 'omnihouse', 'sunny', 'cloudy', 'sunset'],  help='databases to train')
 

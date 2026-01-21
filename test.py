@@ -33,8 +33,8 @@ parser.add_argument('--db_root', default=r'.\omnidata', type=str, help='path to 
 # parser.add_argument('--dbname', default='itbt_sample', type=str,
 #                     choices=['itbt_sample', 'real_indoor_sample'], help='databases to test')
 
-parser.add_argument('--dbname', default='hyp_sync_1', type=str,
-                    choices=['itbt_sample', 'real_indoor_sample', 'hyp_sync_1'], help='databases to test')
+parser.add_argument('--dbname', default='hyp_sync_1a', type=str,
+                    choices=['itbt_sample', 'real_indoor_sample', 'hyp_sync_1a'], help='databases to test')
 
 # data options
 parser.add_argument('--phi_deg', type=float, default=45.0, help='phi_deg')

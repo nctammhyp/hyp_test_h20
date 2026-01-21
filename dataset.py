@@ -86,7 +86,9 @@ class Dataset(torch.utils.data.Dataset):
         opts = Edict()
         opts.img_fmt = 'cam%d/%04d.png'  # [cam_idx, fidx]
         # opts.gt_depth_fmt = 'omnidepth_gt_%d/%05d.tiff'  # [equi_w, fidx]
-        opts.gt_depth_fmt = 'omnidepth_gt_%d/%05d.png'  # [equi_w, fidx]
+        # opts.gt_depth_fmt = 'omnidepth_gt_%d/%05d.png'  # [equi_w, fidx]
+        opts.gt_depth_fmt = 'omnidepth_gt_%d/%05d.npy'  # [equi_w, fidx]
+
         opts.equirect_size, opts.num_invdepth = [160, 640], 192
         opts.num_downsample = 1
         opts.phi_deg, opts.phi2_deg = 45, -1.0
@@ -248,6 +250,28 @@ class Dataset(torch.utils.data.Dataset):
             return invdepth
         elif ext == '.tif' or ext == '.tiff':
             return readImageFloat(path)
+        
+        elif ext == '.npy':
+            # print("-------- use npy --------------")
+
+            quantized_inv_index = np.load(path).astype(np.float32)
+
+            # Mask invalid (inf, -inf, nan)
+            valid_mask = np.isfinite(quantized_inv_index)
+
+            step_invdepth = (self.max_invdepth - self.min_invdepth) / 255.0
+            invdepth = np.zeros_like(quantized_inv_index, dtype=np.float32)
+
+            # Chỉ scale ở vùng hợp lệ
+            invdepth[valid_mask] = (
+                self.min_invdepth + quantized_inv_index[valid_mask] * step_invdepth
+            )
+
+            # Vùng invalid → gán 0 hoặc min_invdepth tùy bạn
+            invdepth[~valid_mask] = 0.0   # hoặc self.min_invdepth
+
+            return invdepth
+
         else:
             return np.fromfile(path, dtype=np.float32)
     

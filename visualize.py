@@ -2,11 +2,11 @@ import cv2
 import numpy as np
 
 # ========= PATH (Giữ nguyên) =========
-cam1_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\cam1\00001.png"
-cam2_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\cam2\00001.png"
-cam3_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\cam3\00001.png"
-gt_path   = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\gt\00001.tiff"
-pred_path = r"F:\algo\mvs_v119\results\hyp_sync_1\invdepth_00001_romnistereo32_v1_e26.png"
+cam1_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1a\cam1\00002.png"
+cam2_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1a\cam2\00002.png"
+cam3_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1a\cam3\00002.png"
+gt_path   = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\gt\00002.tiff"
+pred_path = r"F:\algo\mvs_v119\results\hyp_sync_1a\invdepth_00002_romnistereo32_v4_bs32_e45.png"
 
 max_depth_view = 30.0
 # Resize nhỏ lại để 5 ảnh đứng cạnh nhau không bị quá dài
@@ -27,6 +27,12 @@ if any(x is None for x in [cam1, cam2, cam3, gt, pred]):
 # Chuyển kiểu dữ liệu
 gt = gt.astype(np.float32)
 pred = pred.astype(np.float32)
+
+
+# print("GT dtype:", gt.dtype, "min:", gt.min(), "max:", gt.max())
+# print("Pred dtype:", pred.dtype, "min:", pred.min(), "max:", pred.max())
+
+
 gt[np.isnan(gt)] = 0
 pred[np.isnan(pred)] = 0
 
@@ -47,32 +53,47 @@ pred_color = colorize(pred)
 cam1 = cv2.resize(cam1, (DISPLAY_W, DISPLAY_H))
 cam2 = cv2.resize(cam2, (DISPLAY_W, DISPLAY_H))
 cam3 = cv2.resize(cam3, (DISPLAY_W, DISPLAY_H))
+gt_color = cv2.resize(gt_color, (DISPLAY_W*3, DISPLAY_H))
+pred_color = cv2.resize(pred_color, (DISPLAY_W*3, DISPLAY_H))
 
 # ========= STACK =========
 # 5 ảnh x 400px = 2000px (Vừa khít hoặc hơi to hơn màn hình Full HD một chút)
-vis = np.hstack([cam1, cam2, cam3, gt_color, pred_color])
+vis = np.vstack([np.hstack([cam1, cam2, cam3]), gt_color, pred_color])
 
 # ========= CLICK EVENT =========
 def click_event(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
-        # Xác định xem đang click vào vùng nào (mỗi vùng rộng DISPLAY_W)
-        tile_idx = x // DISPLAY_W
-        local_x = x % DISPLAY_W
-        
-        # Nếu click vào vùng GT (index 3) hoặc Pred (index 4)
-        if tile_idx >= 3:
-            gt_val = gt[y, local_x]
-            pred_val = pred[y, local_x]
-            diff = abs(gt_val - pred_val)
+        temp = vis.copy()
 
-            print(f"Pos(x={local_x}, y={y}) | GT={gt_val:.4f} | Pred={pred_val:.4f} | Diff={diff:.4f}")
+        # Xác định row
+        if DISPLAY_H <= y < 2 * DISPLAY_H:
+            region = "GT"
+            src_y = y - DISPLAY_H
+        elif 2 * DISPLAY_H <= y < 3 * DISPLAY_H:
+            region = "Pred"
+            src_y = y - 2 * DISPLAY_H
+        else:
+            return  # Không click vào cam thì bỏ qua
 
-            temp = vis.copy()
-            cv2.circle(temp, (x, y), 5, (0, 255, 0), -1)
-            text = f"G:{gt_val:.2f} P:{pred_val:.2f}"
-            cv2.putText(temp, text, (x - 50, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
-            cv2.imshow("Viewer", temp)
+        # Vì GT và Pred bị resize ngang x3
+        src_x = int(x / 3)
+
+        if src_x < 0 or src_x >= DISPLAY_W or src_y < 0 or src_y >= DISPLAY_H:
+            return
+
+        gt_val = gt[src_y, src_x]
+        pred_val = pred[src_y, src_x]
+        diff = abs(gt_val - pred_val)
+
+        print(f"[{region}] Pos(x={src_x}, y={src_y}) | GT={gt_val:.4f} | Pred={pred_val:.4f} | Diff={diff:.4f}")
+
+        cv2.circle(temp, (x, y), 5, (0, 255, 0), -1)
+        text = f"G:{gt_val:.2f} P:{pred_val:.2f}"
+        cv2.putText(temp, text, (x - 60, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+
+        cv2.imshow("Viewer", temp)
+
 
 # ========= SHOW =========
 print(f"Total size: {vis.shape[1]}x{vis.shape[0]}")
