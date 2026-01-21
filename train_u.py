@@ -209,7 +209,10 @@ def train(epoch_total, load_state):
         LOG_INFO('\nEpoch: %d' % epoch)
         # acc_total=0
         # for step, data_blob in enumerate(dbloader):
-        for step, data_blob in enumerate(tqdm(dbloader, total=len(dbloader), desc="Processing")):
+        pbar = tqdm(dbloader, total=len(dbloader), desc=f"Epoch {epoch}")
+
+        # for step, data_blob in enumerate(tqdm(dbloader, total=len(dbloader), desc="Processing")):
+        for step, data_blob in enumerate(pbar):
             start_time = time.time()
             imgs, gt, valid, raw_imgs = data_blob
 
@@ -228,10 +231,17 @@ def train(epoch_total, load_state):
 
             epoch_loss = train_loss / (step + 1)
 
-            if step % 50 == 0:
-                LOG_INFO("Iter %d training loss = %.3f, average training loss for every step = %.3f, \
-                    time = %.2f" % (total_iters, loss, epoch_loss, time.time() - start_time))
-                writer.add_scalar("train/loss", loss, total_iters)
+            # ===== Update tqdm display =====
+            pbar.set_postfix({
+                "loss": f"{loss.item():.4f}",
+                "avg": f"{epoch_loss:.4f}"
+            })
+
+
+            # if step % 50 == 0:
+            #     LOG_INFO("Iter %d training loss = %.3f, average training loss for every step = %.3f, \
+            #         time = %.2f" % (total_iters, loss, epoch_loss, time.time() - start_time))
+            #     writer.add_scalar("train/loss", loss, total_iters)
 
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
