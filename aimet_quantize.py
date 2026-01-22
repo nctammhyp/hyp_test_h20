@@ -36,7 +36,7 @@ DB_NAME = "omnithings"
 IMG_ROOT_DIR = "/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/hyp_data_01_trainable/omnithings"
 
 OUTPUT_DIR = "./aimet_export"
-NUM_CALIB_SAMPLES = 5 
+NUM_CALIB_SAMPLES = 500 
 INPUT_SIZE = (800, 768)
 
 # =============================================================================
