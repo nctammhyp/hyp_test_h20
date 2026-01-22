@@ -6,3 +6,5 @@ omnidata
 results
 runs
 outputs
+aimet_export
+qnn_raw_data
