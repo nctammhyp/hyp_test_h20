@@ -53,19 +53,19 @@ def __load_train_sunny(opts):
 __load_train_sunset = __load_train_cloudy = __load_train_sunny
 
 
-# def __load_train_omnithings(opts):
-#     opts.train_idx = list(range(1, 2193))
-#     opts.test_idx = list(range(90, 100)) + list(range(1000, 1010)) + list(range(1900, 1910)) + list(range(2100, 2110))
-#     opts.gt_phi = 90
-#     return opts
-
-
-
 def __load_train_omnithings(opts):
-    opts.train_idx = list(range(1, 30))
-    opts.test_idx = list(range(25, 30))
+    opts.train_idx = list(range(1, 2193))
+    opts.test_idx = list(range(90, 100)) + list(range(1000, 1010)) + list(range(1900, 1910)) + list(range(2100, 2110))
     opts.gt_phi = 90
     return opts
+
+
+
+# def __load_train_omnithings(opts):
+#     opts.train_idx = list(range(1, 30))
+#     opts.test_idx = list(range(25, 30))
+#     opts.gt_phi = 90
+#     return opts
 
 
 def __load_train_omnihouse(opts):
