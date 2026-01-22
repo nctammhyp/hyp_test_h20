@@ -105,7 +105,7 @@ def main():
     model = ROmniStereo(opts.net_opts).cuda()
     
     if opts.snapshot_path:
-        checkpoint = torch.load(opts.snapshot_path)
+        checkpoint = torch.load(opts.snapshot_path, weights_only=False)
         state_dict = {k.replace('module.', ''): v for k, v in checkpoint['net_state_dict'].items()}
         model.load_state_dict(state_dict)
         LOG_INFO(f"Loaded: {opts.snapshot_path}")
