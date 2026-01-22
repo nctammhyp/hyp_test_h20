@@ -47,10 +47,23 @@ class CorrBlock1D:
         out = torch.cat(out_pyramid, dim=-1)
         return out.permute(0, 3, 1, 2).contiguous()
 
+    # @staticmethod
+    # def corr(fmap1, fmap2):
+    #     assert fmap1.shape == fmap2.shape
+    #     bs, ch, h, w, nd = fmap1.shape
+    #     corr = torch.einsum('aijkh,aijkh->ajkh', fmap1, fmap2)
+    #     corr = corr.reshape(bs, h, w, 1, nd).contiguous()
+    #     return corr / torch.sqrt(torch.tensor(ch).float())
     @staticmethod
     def corr(fmap1, fmap2):
         assert fmap1.shape == fmap2.shape
         bs, ch, h, w, nd = fmap1.shape
-        corr = torch.einsum('aijkh,aijkh->ajkh', fmap1, fmap2)
+        
+        # --- SỬA THÀNH ---
+        # Phép tính này tương đương với einsum 'aijkh,aijkh->ajkh'
+        # Nhân từng phần tử rồi cộng gộp theo chiều channel (dim=1)
+        corr = (fmap1 * fmap2).sum(dim=1)
+        
         corr = corr.reshape(bs, h, w, 1, nd).contiguous()
         return corr / torch.sqrt(torch.tensor(ch).float())
+

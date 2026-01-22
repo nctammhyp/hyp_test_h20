@@ -220,6 +220,9 @@ def train(epoch_total, load_state):
             valid = valid.cuda()
             gt = gt.cuda()
 
+            # print(f"img: {imgs[0].shape}")
+            # print(f"grid: {grids[0].shape}")
+
             # net.zero_grad()
             optimizer.zero_grad()
 
