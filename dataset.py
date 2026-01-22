@@ -386,7 +386,7 @@ class Dataset(torch.utils.data.Dataset):
             gt = self.loadGTInvdepthIndex(fidx, 
                 opts.remove_gt_noise, opts.morph_win_size)
             valid = np.logical_and(
-                gt >= 0, gt <= self.num_invdepth).astype(np.bool)
+                gt >= 0, gt <= self.num_invdepth).astype(np.bool_)
         return imgs, gt, valid, raw_imgs
 
     def loadTrainSample(self, i: int, read_input_image=True, varargin=None):

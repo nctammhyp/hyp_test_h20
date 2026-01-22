@@ -194,20 +194,40 @@ def main():
     print("6. Computing Encodings...")
     sim.compute_encodings(forward_pass_callback=calibration_callback, forward_pass_callback_args=calib_loader)
 
-    # 7. Export (QUAY VỀ HÀM CHUẨN - IGNORE WARNING)
+    # 7. Export (SỬA LẠI ĐỂ DÙNG HÀM MỚI CHUẨN HƠN)
     print(f"7. Exporting to {OUTPUT_DIR}...")
     if not os.path.exists(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
     
-    # Sử dụng sim.export truyền thống
-    # Hàm này sẽ gọi torch.onnx.export bên trong.
-    # Vì chúng ta đang chạy CPU, nó sẽ KHÔNG bị lỗi Device Mismatch.
-    sim.export(
-        path=OUTPUT_DIR,
-        filename_prefix="romni_quantized",
-        dummy_input=dummy_input
-    )
+    # Dọn dẹp bộ nhớ trước khi export để tránh MemoryError
+    del calib_loader, calib_ds, ds_tool
+    import gc
+    gc.collect()
+
+    # --- SỬA ĐỔI QUAN TRỌNG: Dùng sim.onnx.export thay vì sim.export ---
+    # Hàm này export ra ONNX + Encodings JSON (chuẩn cho QAIRT)
+    # Và cho phép chỉ định opset_version để tránh lỗi Unsqueeze sau này.
     
-    print("\n✅ DONE! You should see .onnx and .encodings files in aimet_export.")
+    try:
+        sim.onnx.export(
+            output_dir=OUTPUT_DIR,
+            filename_prefix="romni_quantized",
+            dummy_input=dummy_input,
+            opset_version=11  # <--- Ép về 11 để HTP hỗ trợ tốt nhất
+        )
+        print("\n✅ DONE! Exported using sim.onnx.export (Opset 11)")
+        
+    except TypeError:
+        # Fallback nếu phiên bản AIMET cũ không hỗ trợ sim.onnx.export
+        print("⚠️ Warning: sim.onnx.export failed, falling back to sim.export...")
+        sim.export(
+            path=OUTPUT_DIR,
+            filename_prefix="romni_quantized",
+            dummy_input=dummy_input
+        )
+        print("\n✅ DONE! Exported using sim.export (Check Opset manually)")
+
+    print(f"  - {os.path.join(OUTPUT_DIR, 'romni_quantized.onnx')}")
+    print(f"  - {os.path.join(OUTPUT_DIR, 'romni_quantized.encodings')}")
 
 if __name__ == "__main__":
     main()
