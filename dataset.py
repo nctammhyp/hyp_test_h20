@@ -253,6 +253,7 @@ class Dataset(torch.utils.data.Dataset):
         
         elif ext == '.npy':
             # print("-------- use npy --------------")
+            # print(f"max invdepth: {self.max_invdepth}, min invdepth: {self.min_invdepth}")
 
             quantized_inv_index = np.load(path).astype(np.float32)
 
@@ -274,6 +275,50 @@ class Dataset(torch.utils.data.Dataset):
 
         else:
             return np.fromfile(path, dtype=np.float32)
+        
+    def gt2invdepth(self, path: str) -> np.ndarray:
+        quantized_inv_index = np.load(path).astype(np.float32)
+
+        # Mask invalid (inf, -inf, nan)
+        valid_mask = np.isfinite(quantized_inv_index)
+
+        step_invdepth = (self.max_invdepth - self.min_invdepth) / 255.0
+        invdepth = np.zeros_like(quantized_inv_index, dtype=np.float32)
+
+        # Chỉ scale ở vùng hợp lệ
+        invdepth[valid_mask] = (
+            self.min_invdepth + quantized_inv_index[valid_mask] * step_invdepth
+        )
+
+        # Vùng invalid → gán 0 hoặc min_invdepth tùy bạn
+        invdepth[~valid_mask] = 0.0   # hoặc self.min_invdepth
+
+        return invdepth
+    
+    def invdepth2gt(self, invdepth: np.ndarray) -> np.ndarray:
+        invdepth = invdepth.astype(np.float32)
+
+        # Mask invalid
+        valid_mask = np.isfinite(invdepth)
+
+        step_invdepth = (self.max_invdepth - self.min_invdepth) / 255.0
+
+        quantized_inv_index = np.zeros_like(invdepth, dtype=np.float32)
+
+        # Scale back
+        quantized_inv_index[valid_mask] = (
+            (invdepth[valid_mask] - self.min_invdepth) / step_invdepth
+        )
+
+        # Clamp về [0, 255]
+        quantized_inv_index = np.clip(quantized_inv_index, 0, 255)
+
+        # Invalid → gán 0 (hoặc giá trị khác tùy bạn)
+        quantized_inv_index[~valid_mask] = 0.0
+
+        return quantized_inv_index
+
+
     
     def writeInvdepth(self, invdepth: np.ndarray, path: str) -> None:
         _, ext = osp.splitext(path)

@@ -2,11 +2,11 @@ import cv2
 import numpy as np
 
 # ========= PATH (Giữ nguyên) =========
-cam1_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1a\cam1\00002.png"
-cam2_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1a\cam2\00002.png"
-cam3_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1a\cam3\00002.png"
+cam1_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\cam1\00002.png"
+cam2_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\cam2\00002.png"
+cam3_path = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\cam3\00002.png"
 gt_path   = r"F:\algo\mvs_v119\omnidata\hyp_sync_1\gt\00002.tiff"
-pred_path = r"F:\algo\mvs_v119\results\hyp_sync_1a\invdepth_00002_romnistereo32_v4_bs32_e45.png"
+pred_path = r"F:\algo\mvs_v119\results\hyp_sync_1\invdepth_00001_romnistereo32_v6_bs32_e1.png"
 
 max_depth_view = 30.0
 # Resize nhỏ lại để 5 ảnh đứng cạnh nhau không bị quá dài
