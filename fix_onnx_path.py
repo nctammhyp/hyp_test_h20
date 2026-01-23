@@ -1,8 +1,8 @@
 import onnx
 import os
 
-input_model = r"F:\algo\mvs_v119\checkpoints\model_mvs_h20.onnx"
-output_model = r"F:\algo\mvs_v119\checkpoints\model_mvs_h20_clean.onnx"
+input_model = r"F:\algo\mvs_v119\aimet_export\romni_quantized.onnx"
+output_model = r"F:\algo\mvs_v119\aimet_export\romni_onnx_fixed.onnx"
 
 print(f"Loading {input_model}...")
 # 1. Load model (lúc này nó sẽ đọc file .data bên cạnh)
