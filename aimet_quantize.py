@@ -206,48 +206,49 @@ def main():
     input_names = ["img0", "img1", "img2", "grid0", "grid1", "grid2"]
     output_names = ["invdepth"]
 
-    # Đảm bảo mọi thứ ở CPU
+    # Đảm bảo mọi thứ ở CPU và Eval Mode
     sim.model.cpu()
     sim.model.eval()
-    dummy_input_cpu = tuple(t.cpu() for t in dummy_input)
+    
+    # Clone dummy input sang CPU và đảm bảo không có gradients
+    dummy_input_cpu = tuple(t.detach().cpu() for t in dummy_input)
 
-    # Lấy model đã lượng tử hóa
-    quantized_model = sim.model
-
-    print("   -> Forcing Legacy ONNX Export (Opset 11)...")
+    print("   -> Forcing Legacy ONNX Export (Opset 11) by disabling JIT Profiling...")
     onnx_path = os.path.join(OUTPUT_DIR, "romni_quantized.onnx")
 
     try:
-        # Tắt cơ chế Dynamo/Export mới bằng cách sử dụng cơ chế Tracing đơn thuần
-        # Chúng ta bọc trong torch.no_grad() và không dùng các tham số linh hoạt
+        # Tắt Profiling Executor để ép PyTorch dùng trình xuất cũ (Legacy Tracing)
+        torch._C._jit_set_profiling_executor(False)
+        torch._C._jit_set_profiling_mode(False)
+
         with torch.no_grad():
+            # Sử dụng tham số training=torch.onnx.TrainingMode.EVAL để tránh Dynamo
             torch.onnx.export(
-                quantized_model,
+                sim.model,
                 dummy_input_cpu,
                 onnx_path,
                 export_params=True,
-                opset_version=11,      # Ép về 11 cho Qualcomm
+                opset_version=11,  # Qualcomm yêu cầu 11
                 do_constant_folding=True,
                 input_names=input_names,
                 output_names=output_names,
-                # THAM SỐ QUAN TRỌNG: Ngăn chặn PyTorch dùng trình xuất mới (Dynamo)
-                # bằng cách không đặt bất kỳ thuộc tính dynamic nào.
-                verbose=False
+                keep_initializers_as_inputs=False
             )
         
-        # Sau khi export ONNX thành công, ta xuất file encodings JSON
-        # Đối với AIMET v2, ta dùng dict để tránh lỗi 'int' type
+        # Xuất file encodings JSON
+        # AIMET v2: onnx_export_args cần là một dict
         sim.export(
             path=OUTPUT_DIR, 
             filename_prefix="romni_quantized", 
             dummy_input=dummy_input_cpu,
-            onnx_export_args={'opset_version': 11} 
+            onnx_export_args={'opset_version': 11}
         )
         print("\n✅ SUCCESS! Exported ONNX (Opset 11) and Encodings.")
 
     except Exception as e:
-        print(f"\n❌ Export failed again: {e}")
-        print("Mẹo: Thử chạy lệnh: 'export TORCH_ONNX_LOW_LEVEL_DEBUG_PRINT=1' để debug sâu hơn.")
+        print(f"\n❌ Export failed: {e}")
+        print("Đang thử phương án cuối cùng: Export không kèm version...")
+        sim.export(path=OUTPUT_DIR, filename_prefix="romni_quantized", dummy_input=dummy_input_cpu)
 
 if __name__ == "__main__":
     main()
