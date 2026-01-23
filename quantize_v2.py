@@ -33,7 +33,7 @@ DB_NAME = "omnithings"
 IMG_ROOT_DIR = "/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/hyp_data_01_trainable/omnithings"
 
 OUTPUT_DIR = "./aimet_export_adaround"
-NUM_CALIB_SAMPLES = 50 
+NUM_CALIB_SAMPLES = 5
 INPUT_SIZE = (800, 768)
 
 # =============================================================================
@@ -174,7 +174,7 @@ def main():
     params = AdaroundParameters(
         data_loader=calib_loader,
         num_batches=len(calib_loader),
-        default_num_iterations=1000,
+        default_num_iterations=10,
         forward_fn=adaround_forward_fn # <--- FIX: Truyền hàm forward tùy chỉnh
     )
     
