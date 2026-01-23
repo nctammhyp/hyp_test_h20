@@ -202,31 +202,36 @@ def main():
     import gc
     gc.collect()
 
-    # --- [MODIFIED START] CẤU HÌNH INPUT NAME VÀ OPSET ---
     input_names = ["img0", "img1", "img2", "grid0", "grid1", "grid2"]
     output_names = ["invdepth"]
 
+    # Sử dụng sim.export (phương thức chuẩn và tương thích nhất của AIMET)
+    # Nó sẽ xuất ra đồng thời file .onnx và file .encodings
     try:
-        sim.onnx.export(
-            output_dir=OUTPUT_DIR,
+        print("   -> Attempting sim.export...")
+        sim.export(
+            path=OUTPUT_DIR,
             filename_prefix="romni_quantized",
             dummy_input=dummy_input,
-            opset_version=11,  # Opset 11 ổn định nhất cho HTP
+            onnx_export_args=11  # Truyền opset 11 vào đây
+        )
+        print("\n✅ DONE! Exported ONNX and Encodings using sim.export")
+        
+    except Exception as e:
+        print(f"⚠️ sim.export failed: {e}. Trying manual torch.onnx.export...")
+        # Nếu sim.export lỗi opset, ta export ONNX thủ công để đảm bảo Opset 11
+        onnx_path = os.path.join(OUTPUT_DIR, "romni_quantized.onnx")
+        torch.onnx.export(
+            sim.model,
+            dummy_input,
+            onnx_path,
+            opset_version=11,
             input_names=input_names,
             output_names=output_names
         )
-        print("\n✅ DONE! Exported using sim.onnx.export opset_version=11")
-    except Exception as e:
-        print(f"⚠️ Warning: sim.onnx.export failed ({e}), falling back to standard export...")
-        # # Fallback thủ công nếu thư viện cũ
-        # sim.export(
-        #     path=OUTPUT_DIR,
-        #     filename_prefix="romni_quantized",
-        #     dummy_input=dummy_input
-        # )
-    # --- [MODIFIED END] ---
-
-    print(f"Check outputs in {OUTPUT_DIR}")
+        # Sau đó vẫn gọi sim.export để lấy file .encodings (JSON)
+        sim.export(path=OUTPUT_DIR, filename_prefix="romni_quantized", dummy_input=dummy_input)
+        print("\n✅ DONE! Exported ONNX (Manual) and Encodings (Sim)")
 
 if __name__ == "__main__":
     main()
