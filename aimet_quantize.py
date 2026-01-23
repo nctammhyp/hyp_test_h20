@@ -1,3 +1,5 @@
+# --- START OF FILE aimet_quantize.py ---
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset as TorchDataset
@@ -25,11 +27,7 @@ from module.network import ROmniStereo
 # =============================================================================
 # 1. CONFIGURATION
 # =============================================================================
-# CKPT_PATH = r"F:\algo\mvs_v119\checkpoints\romnistereo32_v6_bs32_e37.pth"
-# DB_ROOT = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable"
-# DB_NAME = "omnithings"
-# IMG_ROOT_DIR = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable\omnithings"
-
+# Cập nhật đường dẫn của bạn ở đây
 CKPT_PATH = "/home/sw-tamnguyen/Desktop/depth_project/hyp_test_h20/checkpoints/romnistereo32_v6_bs32/romnistereo32_v6_bs32_e40.pth"
 DB_ROOT = "/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/hyp_data_01_trainable/"
 DB_NAME = "omnithings"
@@ -110,17 +108,14 @@ class CalibrationDataset(TorchDataset):
 # 3. CALIBRATION CALLBACK
 # =============================================================================
 def calibration_callback(model, calib_loader):
-    # Ép chạy CPU trong callback
     device = torch.device("cpu")
     model.eval()
-    # model.to(device) # Model thường đã ở device đúng do AIMET quản lý, nhưng cứ chắc chắn
     
     print(f"   -> Running Forward Pass for Calibration...")
     with torch.no_grad():
         for i, batch in tqdm(enumerate(calib_loader), total=len(calib_loader)):
             img0, img1, img2, g0, g1, g2 = batch
             
-            # Đảm bảo input ở CPU
             img0, img1, img2 = img0.to(device), img1.to(device), img2.to(device)
             g0, g1, g2 = g0.to(device), g1.to(device), g2.to(device)
 
@@ -170,7 +165,6 @@ def main():
     print("4. Wrapping & Folding BN...")
     wrapper = ROmniStereoWrapper(model).to(device)
     
-    # Dummy input trên CPU
     dummy_img = torch.randn(1, 1, 768, 800).to(device)
     dummy_grid = grids_tensor[0]
     dummy_input = (dummy_img, dummy_img, dummy_img, dummy_grid, dummy_grid, dummy_grid)
@@ -194,40 +188,39 @@ def main():
     print("6. Computing Encodings...")
     sim.compute_encodings(forward_pass_callback=calibration_callback, forward_pass_callback_args=calib_loader)
 
-    # 7. Export (SỬA LẠI ĐỂ DÙNG HÀM MỚI CHUẨN HƠN)
+    # 7. Export
     print(f"7. Exporting to {OUTPUT_DIR}...")
     if not os.path.exists(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
     
-    # Dọn dẹp bộ nhớ trước khi export để tránh MemoryError
     del calib_loader, calib_ds, ds_tool
     import gc
     gc.collect()
 
-    # --- SỬA ĐỔI QUAN TRỌNG: Dùng sim.onnx.export thay vì sim.export ---
-    # Hàm này export ra ONNX + Encodings JSON (chuẩn cho QAIRT)
-    # Và cho phép chỉ định opset_version để tránh lỗi Unsqueeze sau này.
-    
+    # --- [MODIFIED START] CẤU HÌNH INPUT NAME VÀ OPSET ---
+    input_names = ["img0", "img1", "img2", "grid0", "grid1", "grid2"]
+    output_names = ["invdepth"]
+
     try:
         sim.onnx.export(
             output_dir=OUTPUT_DIR,
             filename_prefix="romni_quantized",
             dummy_input=dummy_input,
-            opset_version=11  # <--- Ép về 11 để HTP hỗ trợ tốt nhất
+            opset_version=11,  # Opset 11 ổn định nhất cho HTP
+            input_names=input_names,
+            output_names=output_names
         )
-        print("\n✅ DONE! Exported using sim.onnx.export (Opset 11)")
-        
-    except TypeError:
-        # Fallback nếu phiên bản AIMET cũ không hỗ trợ sim.onnx.export
-        print("⚠️ Warning: sim.onnx.export failed, falling back to sim.export...")
+        print("\n✅ DONE! Exported using sim.onnx.export")
+    except Exception as e:
+        print(f"⚠️ Warning: sim.onnx.export failed ({e}), falling back to standard export...")
+        # Fallback thủ công nếu thư viện cũ
         sim.export(
             path=OUTPUT_DIR,
             filename_prefix="romni_quantized",
             dummy_input=dummy_input
         )
-        print("\n✅ DONE! Exported using sim.export (Check Opset manually)")
+    # --- [MODIFIED END] ---
 
-    print(f"  - {os.path.join(OUTPUT_DIR, 'romni_quantized.onnx')}")
-    print(f"  - {os.path.join(OUTPUT_DIR, 'romni_quantized.encodings')}")
+    print(f"Check outputs in {OUTPUT_DIR}")
 
 if __name__ == "__main__":
     main()

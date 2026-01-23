@@ -1,3 +1,5 @@
+# --- START OF FILE corr.py ---
+
 # adapted from https://github.com/princeton-vl/RAFT-Stereo/blob/main/core/corr.py
 import numpy as np
 import torch
@@ -6,10 +8,12 @@ import torch.nn.functional as F
 
 
 class CorrBlock1D:
-    def __init__(self, fmap1, fmap2, num_levels=4, radius=4):
+    # --- [MODIFIED START] Thêm dx_buffer vào init ---
+    def __init__(self, fmap1, fmap2, dx_buffer, num_levels=4, radius=4):
         self.num_levels = num_levels
         self.radius = radius
         self.corr_pyramid = []
+        self.dx = dx_buffer # Lưu lại buffer
 
         # all pairs correlation
         corr = CorrBlock1D.corr(fmap1, fmap2)
@@ -25,6 +29,7 @@ class CorrBlock1D:
         for i in range(1, self.num_levels):
             corr = F.avg_pool2d(corr, [1, 2], stride=[1, 2])
             self.corr_pyramid.append(corr)
+    # --- [MODIFIED END] ---
 
     def __call__(self, invdepth_idx):
         r = self.radius
@@ -34,8 +39,16 @@ class CorrBlock1D:
         out_pyramid = []
         for i in range(self.num_levels):
             corr = self.corr_pyramid[i]
-            dx = torch.linspace(-r, r, 2*r+1)
-            dx = dx.view(2*r+1, 1).to(coords.device)
+            
+            # --- [MODIFIED START] SỬ DỤNG DX BUFFER ---
+            # Code cũ gây lỗi:
+            # dx = torch.linspace(-r, r, 2*r+1)
+            # dx = dx.view(2*r+1, 1).to(coords.device)
+            
+            # Code mới (An toàn cho HTP/ONNX):
+            dx = self.dx 
+            # --- [MODIFIED END] ---
+            
             x0 = dx + coords.reshape(batch*h*w, 1, 1, 1) / 2**i
             x0 = 2*x0/(corr.shape[-1]-1) - 1
             y0 = torch.zeros_like(x0)
@@ -47,23 +60,14 @@ class CorrBlock1D:
         out = torch.cat(out_pyramid, dim=-1)
         return out.permute(0, 3, 1, 2).contiguous()
 
-    # @staticmethod
-    # def corr(fmap1, fmap2):
-    #     assert fmap1.shape == fmap2.shape
-    #     bs, ch, h, w, nd = fmap1.shape
-    #     corr = torch.einsum('aijkh,aijkh->ajkh', fmap1, fmap2)
-    #     corr = corr.reshape(bs, h, w, 1, nd).contiguous()
-    #     return corr / torch.sqrt(torch.tensor(ch).float())
     @staticmethod
     def corr(fmap1, fmap2):
         assert fmap1.shape == fmap2.shape
         bs, ch, h, w, nd = fmap1.shape
         
-        # --- SỬA THÀNH ---
         # Phép tính này tương đương với einsum 'aijkh,aijkh->ajkh'
         # Nhân từng phần tử rồi cộng gộp theo chiều channel (dim=1)
         corr = (fmap1 * fmap2).sum(dim=1)
         
         corr = corr.reshape(bs, h, w, 1, nd).contiguous()
         return corr / torch.sqrt(torch.tensor(ch).float())
-

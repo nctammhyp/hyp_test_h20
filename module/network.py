@@ -1,3 +1,5 @@
+# --- START OF FILE network.py ---
+
 # File author: Hualie Jiang (jianghualie0@gmail.com)
 
 import torch
@@ -36,6 +38,14 @@ class ROmniStereo(torch.nn.Module):
         self.volume_gen = Generator(self.opts)
         self.state_conv = Conv2D(context_dim, hidden_dim, 1, pad=0, relu=False)
         self.update_block = UpdateBlock(self.opts, hidden_dim=hidden_dim, input_dim=context_dim)
+
+        # --- [MODIFIED START] FIX ERROR 0xc26 / UNSQUEEZE FLOAT32 ---
+        # Tạo sẵn tensor dx ở đây và đăng ký là buffer.
+        # Khi export ONNX, nó sẽ biến thành hằng số (Constant), giúp xóa bỏ node Unsqueeze động.
+        r = self.opts.corr_radius
+        dx_tensor = torch.linspace(-r, r, 2*r+1).view(2*r+1, 1)
+        self.register_buffer('corr_dx', dx_tensor)
+        # --- [MODIFIED END] ---
 
     def freeze_bn(self):
         for m in self.modules():
@@ -109,9 +119,13 @@ class ROmniStereo(torch.nn.Module):
             net = torch.tanh(self.state_conv(context_feat))
 
         match_feat_volume_list = [feat.float() for feat in match_feat_volume_list]
+        
+        # --- [MODIFIED START] TRUYỀN DX BUFFER VÀO ---
         corr_fn = CorrBlock1D(*match_feat_volume_list,
+                              dx_buffer=self.corr_dx, # <--- Truyền buffer đã tạo ở init
                               radius=self.opts.corr_radius,
                               num_levels=self.opts.corr_levels)
+        # --- [MODIFIED END] ---
 
         # initialize invdepth_idx
         invdepth_idx = torch.zeros_like(context_feat_volume[:, :1, ..., 0])
