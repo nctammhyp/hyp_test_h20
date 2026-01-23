@@ -143,7 +143,13 @@ def main():
         checkpoint = torch.load(CKPT_PATH, map_location='cpu', weights_only=False)
         sd = checkpoint['net_state_dict'] if 'net_state_dict' in checkpoint else checkpoint
         sd = {k.replace('module.', ''): v for k, v in sd.items()}
-        model.load_state_dict(sd)
+        
+        # [FIX] Thêm strict=False để bỏ qua lỗi thiếu key 'corr_dx'
+        missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
+        
+        print(f"   -> Loaded Checkpoint. Missing keys: {missing_keys}")
+        # Key 'corr_dx' bị thiếu là bình thường vì ta mới thêm vào code, 
+        # nó đã được khởi tạo giá trị đúng trong __init__ rồi.
     else:
         print(f"❌ Checkpoint not found: {CKPT_PATH}"); return
 
