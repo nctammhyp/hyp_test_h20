@@ -215,15 +215,15 @@ def main():
             input_names=input_names,
             output_names=output_names
         )
-        print("\n✅ DONE! Exported using sim.onnx.export")
+        print("\n✅ DONE! Exported using sim.onnx.export opset_version=11")
     except Exception as e:
         print(f"⚠️ Warning: sim.onnx.export failed ({e}), falling back to standard export...")
-        # Fallback thủ công nếu thư viện cũ
-        sim.export(
-            path=OUTPUT_DIR,
-            filename_prefix="romni_quantized",
-            dummy_input=dummy_input
-        )
+        # # Fallback thủ công nếu thư viện cũ
+        # sim.export(
+        #     path=OUTPUT_DIR,
+        #     filename_prefix="romni_quantized",
+        #     dummy_input=dummy_input
+        # )
     # --- [MODIFIED END] ---
 
     print(f"Check outputs in {OUTPUT_DIR}")
