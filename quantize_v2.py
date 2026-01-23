@@ -99,7 +99,6 @@ class CalibrationDataset(TorchDataset):
 # 3. CUSTOM FORWARD FUNCTIONS
 # =============================================================================
 def adaround_forward_fn(model, batch_data):
-    """ Custom forward function for AdaRound """
     img0, img1, img2, g0, g1, g2 = batch_data
     device = next(model.parameters()).device
     
@@ -110,17 +109,12 @@ def adaround_forward_fn(model, batch_data):
     return model(img0, img1, img2, g0, g1, g2)
 
 def calibration_callback(model, calib_loader):
-    """ Custom forward function for QuantSim encoding computation """
-    # Nếu chạy adaround trên GPU, thì ở đây cũng nên dùng GPU
-    # Nhưng nếu trước đó gặp lỗi mismatch trên GPU thì hãy đổi về CPU
-    # Ở đây tôi thử dùng GPU vì AdaRound đã chạy GPU rồi
     device = next(model.parameters()).device 
     model.eval()
-    
     print(f"   -> Running Forward Pass for Encoding Calibration on {device}...")
     with torch.no_grad():
         for i, batch in tqdm(enumerate(calib_loader), total=len(calib_loader), leave=False):
-            adaround_forward_fn(model, batch) # Tái sử dụng hàm forward trên
+            adaround_forward_fn(model, batch)
 
 # =============================================================================
 # 4. MAIN
@@ -171,13 +165,23 @@ def main():
     # 4. APPLY ADAROUND
     print("4. Applying AdaRound...")
     
+    # --- BƯỚC FIX LỖI KEYERROR: Tìm các lớp trong update_block để bỏ qua ---
+    ignored_modules = []
+    for name, module in wrapper.named_modules():
+        # model.update_block là tên trong ROmniStereo, 
+        # do wrapper bọc ngoài nên path sẽ là model.update_block...
+        if "update_block" in name and isinstance(module, (nn.Conv2d, nn.Linear)):
+            ignored_modules.append(module)
+            print(f"   -> Ignoring layer from AdaRound: {name}")
+
     params = AdaroundParameters(
         data_loader=calib_loader,
         num_batches=len(calib_loader),
-        default_num_iterations=10,
-        forward_fn=adaround_forward_fn # <--- FIX: Truyền hàm forward tùy chỉnh
+        default_num_iterations=10, # Demo để test, thực tế nên để 1000
+        forward_fn=adaround_forward_fn 
     )
     
+    # Thực hiện AdaRound với danh sách ignore_modules
     adarounded_model = Adaround.apply_adaround(
         wrapper, 
         dummy_input, 
@@ -185,13 +189,14 @@ def main():
         path=OUTPUT_DIR,
         filename_prefix='adaround',
         default_param_bw=8,
-        default_quant_scheme=QuantScheme.post_training_tf
+        default_quant_scheme=QuantScheme.post_training_tf,
+        ignore_modules=ignored_modules # <--- PASS DANH SÁCH IGNORE VÀO ĐÂY
     )
     
     print("✅ AdaRound Complete.")
 
     # 5. Create QuantSim with AdaRounded Model
-    print("5. Creating QuantSim using AdaRounded weights...")
+    print("5. Creating QuantSim...")
     sim = QuantizationSimModel(
         model=adarounded_model,
         dummy_input=dummy_input,
@@ -208,11 +213,9 @@ def main():
     print(f"7. Exporting to {OUTPUT_DIR}...")
     if not os.path.exists(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
     
-    # Dọn RAM
     del calib_loader, calib_ds, ds_tool
     import gc; gc.collect()
 
-    # Move model to CPU for safer export (Optional)
     sim.model.to('cpu')
     dummy_input_cpu = tuple([d.cpu() for d in dummy_input])
 
@@ -224,16 +227,15 @@ def main():
             opset_version=11 
         )
         print("\n✅ DONE! Exported using sim.onnx.export (Opset 11)")
-    except TypeError:
+    except Exception as e:
+        print(f"⚠️  sim.onnx.export failed, using sim.export... Error: {e}")
         sim.export(
             path=OUTPUT_DIR,
             filename_prefix="romni_adaround",
             dummy_input=dummy_input_cpu
         )
-        print("\n✅ DONE! Exported using sim.export")
 
-    print(f"  - {os.path.join(OUTPUT_DIR, 'romni_adaround.onnx')}")
-    print(f"  - {os.path.join(OUTPUT_DIR, 'romni_adaround.encodings')}")
+    print(f"  - Folder: {OUTPUT_DIR}")
 
 if __name__ == "__main__":
     main()
