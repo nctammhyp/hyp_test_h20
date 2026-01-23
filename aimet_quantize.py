@@ -209,38 +209,31 @@ def main():
     sim.model.cpu()
     sim.model.eval()
 
-    try:
-        print("   -> Attempting sim.export (standard)...")
-        # Không truyền opset_version vào đây vì AIMET v2 bản này có vẻ kén type của tham số phụ
-        sim.export(
-            path=OUTPUT_DIR,
-            filename_prefix="romni_quantized",
-            dummy_input=dummy_input
-        )
-        print("\n✅ DONE! Exported using sim.export")
-        
-    except Exception as e:
-        print(f"⚠️ sim.export failed: {e}. Trying manual legacy torch.onnx.export...")
-        onnx_path = os.path.join(OUTPUT_DIR, "romni_quantized.onnx")
-        
-        # SỬA LỖI SYMFLOAT: Sử dụng cơ chế Tracing truyền thống của ONNX
-        # Bằng cách ép dummy_input về tensor thuần túy và không dùng cơ chế Export mới.
-        with torch.no_grad():
-            torch.onnx.export(
-                sim.model,
-                dummy_input,
-                onnx_path,
-                export_params=True,
-                opset_version=11, # Ép về 11 để Qualcomm SDK đọc tốt nhất
-                do_constant_folding=True,
-                input_names=input_names,
-                output_names=output_names,
-                # Nếu PyTorch vẫn cố dùng cơ chế mới, ta bỏ qua các tham số linh hoạt
-            )
+    # --- ÉP BUỘC EXPORT THỦ CÔNG ĐỂ GIỮ OPSET 11 ---
+    print("   -> Exporting ONNX manually to force Opset 11...")
+    onnx_path = os.path.join(OUTPUT_DIR, "romni_quantized.onnx")
+    
+    # Chuẩn bị dummy input trên CPU
+    dummy_input_cpu = tuple(t.cpu() for t in dummy_input)
 
-        # Xuất file encodings JSON (Rất quan trọng cho qnn-onnx-converter)
-        sim.export(path=OUTPUT_DIR, filename_prefix="romni_quantized", dummy_input=dummy_input)
-        print("\n✅ DONE! Exported manual ONNX (Opset 11) and Encodings.")
+    with torch.no_grad():
+        torch.onnx.export(
+            sim.model,
+            dummy_input_cpu,
+            onnx_path,
+            export_params=True,
+            opset_version=11,  # <--- ÉP CỨNG VERSION 11
+            do_constant_folding=True,
+            input_names=input_names,
+            output_names=output_names
+        )
+
+    # Xuất file encodings JSON (Cần thiết cho Qualcomm Converter)
+    # Lệnh này sẽ sinh ra file .encodings
+    sim.export(path=OUTPUT_DIR, filename_prefix="romni_quantized", dummy_input=dummy_input_cpu)
+    
+    print("\n✅ DONE! Manual Export successful with Opset 11.")
+    print(f"Check outputs in {OUTPUT_DIR}")
 
 if __name__ == "__main__":
     main()
