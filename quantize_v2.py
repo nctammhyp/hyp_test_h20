@@ -80,7 +80,7 @@ def main():
     # 1. Load Model
     opts = Edict({'base_channel': 32, 'num_invdepth': 192, 'use_rgb': False, 'encoder_downsample_twice': False, 'num_downsample': 1, 'corr_levels': 4, 'corr_radius': 4, 'mixed_precision': False, 'fix_bn': True})
     model = ROmniStereo(opts)
-    checkpoint = torch.load(CKPT_PATH, map_location='cpu')
+    checkpoint = torch.load(CKPT_PATH, map_location='cpu', weights_only=False)
     sd = checkpoint['net_state_dict'] if 'net_state_dict' in checkpoint else checkpoint
     model.load_state_dict({k.replace('module.', ''): v for k, v in sd.items()})
     model.to(device).eval()
