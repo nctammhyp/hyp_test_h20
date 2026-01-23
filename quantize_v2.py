@@ -15,7 +15,6 @@ try:
     from aimet_torch.quantsim import QuantizationSimModel
     from aimet_torch.batch_norm_fold import fold_all_batch_norms
     from aimet_common.defs import QuantScheme
-    # Import AdaRound
     from aimet_torch.adaround.adaround_weight import Adaround, AdaroundParameters
 except ImportError:
     print("❌ Error: AIMET is not installed.")
@@ -33,12 +32,12 @@ DB_ROOT = "/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthe
 DB_NAME = "omnithings"
 IMG_ROOT_DIR = "/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/hyp_data_01_trainable/omnithings"
 
-OUTPUT_DIR = "./aimet_export_adaround" # Đổi tên folder output
-NUM_CALIB_SAMPLES = 5 # AdaRound cần nhiều sample hơn PTQ thường (500-1000)
+OUTPUT_DIR = "./aimet_export_adaround"
+NUM_CALIB_SAMPLES = 50 
 INPUT_SIZE = (800, 768)
 
 # =============================================================================
-# 2. WRAPPER & DATA LOADER (GIỮ NGUYÊN)
+# 2. WRAPPER & DATA LOADER
 # =============================================================================
 class ROmniStereoWrapper(nn.Module):
     def __init__(self, model):
@@ -97,29 +96,36 @@ class CalibrationDataset(TorchDataset):
         return img0, img1, img2, self.grids[0], self.grids[1], self.grids[2]
 
 # =============================================================================
-# 3. CALIBRATION CALLBACK
+# 3. CUSTOM FORWARD FUNCTIONS
 # =============================================================================
+def adaround_forward_fn(model, batch_data):
+    """ Custom forward function for AdaRound """
+    img0, img1, img2, g0, g1, g2 = batch_data
+    device = next(model.parameters()).device
+    
+    img0, img1, img2 = img0.to(device), img1.to(device), img2.to(device)
+    g0, g1, g2 = g0.to(device), g1.to(device), g2.to(device)
+    g0 = g0.squeeze(0); g1 = g1.squeeze(0); g2 = g2.squeeze(0)
+    
+    return model(img0, img1, img2, g0, g1, g2)
+
 def calibration_callback(model, calib_loader):
-    device = torch.device("cpu") # AdaRound chạy trên CPU cũng được nhưng chậm, tốt nhất là GPU nếu có thể
-    # Nếu máy có GPU, hãy đổi thành "cuda" ở đây và trong hàm main
+    """ Custom forward function for QuantSim encoding computation """
+    # Nếu chạy adaround trên GPU, thì ở đây cũng nên dùng GPU
+    # Nhưng nếu trước đó gặp lỗi mismatch trên GPU thì hãy đổi về CPU
+    # Ở đây tôi thử dùng GPU vì AdaRound đã chạy GPU rồi
+    device = next(model.parameters()).device 
     model.eval()
     
-    # print(f"   -> Running Forward Pass for Calibration...")
+    print(f"   -> Running Forward Pass for Encoding Calibration on {device}...")
     with torch.no_grad():
         for i, batch in tqdm(enumerate(calib_loader), total=len(calib_loader), leave=False):
-            img0, img1, img2, g0, g1, g2 = batch
-            img0, img1, img2 = img0.to(device), img1.to(device), img2.to(device)
-            g0, g1, g2 = g0.to(device), g1.to(device), g2.to(device)
-            g0 = g0.squeeze(0); g1 = g1.squeeze(0); g2 = g2.squeeze(0)
-            model(img0, img1, img2, g0, g1, g2)
+            adaround_forward_fn(model, batch) # Tái sử dụng hàm forward trên
 
 # =============================================================================
 # 4. MAIN
 # =============================================================================
 def main():
-    # --- CẤU HÌNH DEVICE ---
-    # AdaRound tính toán khá nặng, nên dùng GPU nếu có thể.
-    # Nhưng nếu model của bạn bị lỗi mismatch device trên GPU, hãy giữ là "cpu"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
     print(f"--- AIMET AdaRound Pipeline on {device} ---")
 
@@ -147,7 +153,6 @@ def main():
     grids_tensor = [torch.from_numpy(g.astype(np.float32)).to(device) for g in grids_np]
 
     calib_ds = CalibrationDataset(IMG_ROOT_DIR, grids_tensor, limit=NUM_CALIB_SAMPLES)
-    # AdaRound cần batch size > 1 để học tốt hơn, nhưng model này nặng nên để 1 hoặc 2
     calib_loader = DataLoader(calib_ds, batch_size=1, shuffle=False)
 
     # 3. Wrap & Fold BN
@@ -163,32 +168,15 @@ def main():
         (80, 320, 96, 2), (80, 320, 96, 2), (80, 320, 96, 2)
     ])
 
-    # 4. APPLY ADAROUND (Bước mới quan trọng)
-    print("4. Applying AdaRound (This may take a while)...")
+    # 4. APPLY ADAROUND
+    print("4. Applying AdaRound...")
     
-    # Cấu hình tham số AdaRound
     params = AdaroundParameters(
         data_loader=calib_loader,
-        num_batches=len(calib_loader), # Dùng hết data loader
-        default_num_iterations=1000,   # Số bước tối ưu cho mỗi layer (càng cao càng tốt, chuẩn 10000)
-        default_reg_param=0.01,
-        default_beta_range=(20, 2)
+        num_batches=len(calib_loader),
+        default_num_iterations=1000,
+        forward_fn=adaround_forward_fn # <--- FIX: Truyền hàm forward tùy chỉnh
     )
-    
-    # Thực hiện AdaRound
-    # Lưu ý: Hàm này cần một cách để feed data vào model.
-    # AIMET mặc định data_loader trả về (input, target).
-    # Nhưng Wrapper của ta nhận nhiều input. Ta cần hàm adapter.
-    # Tuy nhiên, Adaround apply trực tiếp lên model pytorch đã fold BN.
-    
-    # Fix: AdaRound yêu cầu model nhận input đơn giản từ dataloader.
-    # Do model ta phức tạp (nhiều input), ta dùng SimModel sau đó set encoding thì dễ hơn.
-    # Nhưng chuẩn nhất là chạy AdaRound -> nhận được model đã tối ưu weights -> rồi mới tạo QuantSim.
-    
-    # Để đơn giản hóa, ta sẽ định nghĩa hàm forward_fn cho AdaRound nếu thư viện hỗ trợ, 
-    # nhưng Adaround.apply_adaround() tự chạy forward.
-    # Vấn đề là calib_loader của ta trả về tuple 6 tensors.
-    # Wrapper forward nhận 6 args. -> OK khớp nhau (unpacking).
     
     adarounded_model = Adaround.apply_adaround(
         wrapper, 
@@ -200,7 +188,7 @@ def main():
         default_quant_scheme=QuantScheme.post_training_tf
     )
     
-    print("✅ AdaRound Complete. Weights optimized.")
+    print("✅ AdaRound Complete.")
 
     # 5. Create QuantSim with AdaRounded Model
     print("5. Creating QuantSim using AdaRounded weights...")
@@ -212,9 +200,8 @@ def main():
         default_param_bw=8
     )
 
-    # 6. Compute Encodings (Set encodings cho activation)
+    # 6. Compute Encodings
     print("6. Computing Encodings (Calibration)...")
-    # AdaRound đã tối ưu Weight, giờ ta chạy để tối ưu Activation range
     sim.compute_encodings(forward_pass_callback=calibration_callback, forward_pass_callback_args=calib_loader)
 
     # 7. Export
@@ -225,11 +212,15 @@ def main():
     del calib_loader, calib_ds, ds_tool
     import gc; gc.collect()
 
+    # Move model to CPU for safer export (Optional)
+    sim.model.to('cpu')
+    dummy_input_cpu = tuple([d.cpu() for d in dummy_input])
+
     try:
         sim.onnx.export(
             output_dir=OUTPUT_DIR,
             filename_prefix="romni_adaround",
-            dummy_input=dummy_input,
+            dummy_input=dummy_input_cpu,
             opset_version=11 
         )
         print("\n✅ DONE! Exported using sim.onnx.export (Opset 11)")
@@ -237,7 +228,7 @@ def main():
         sim.export(
             path=OUTPUT_DIR,
             filename_prefix="romni_adaround",
-            dummy_input=dummy_input
+            dummy_input=dummy_input_cpu
         )
         print("\n✅ DONE! Exported using sim.export")
 
