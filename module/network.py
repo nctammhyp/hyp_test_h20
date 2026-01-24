@@ -136,8 +136,12 @@ class ROmniStereo(torch.nn.Module):
         weight_ceil = (invdepth_idx - invdepth_idx_floor)
         weight_ceil[invdepth_idx_ceil == 0] = 1.0
 
-        invdepth_idx_floor = invdepth_idx_floor.long()
-        invdepth_idx_ceil = invdepth_idx_ceil.long()
+        # invdepth_idx_floor = invdepth_idx_floor.long()
+        # invdepth_idx_ceil = invdepth_idx_ceil.long()
+
+        invdepth_idx_floor = invdepth_idx_floor.int()
+        invdepth_idx_ceil = invdepth_idx_ceil.int()
+
 
         feat_floor = torch.gather(feat_volume, 4, invdepth_idx_floor.repeat(1, ch, 1, 1).unsqueeze(-1))[..., 0]
         feat_ceil = torch.gather(feat_volume, 4, invdepth_idx_ceil.repeat(1, ch, 1, 1).unsqueeze(-1))[..., 0]
