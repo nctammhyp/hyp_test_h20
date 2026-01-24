@@ -1,7 +1,7 @@
 import onnx
 
 # Đường dẫn file ONNX của bạn
-model_path = "./aimet_export/romni_quantized.onnx"
+model_path = r"F:\algo\mvs_v119\romnistereo_v11_fixed.onnx"
 model = onnx.load(model_path)
 
 print("--- INPUT NAMES IN ONNX ---")

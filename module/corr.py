@@ -54,6 +54,7 @@ class CorrBlock1D:
             y0 = torch.zeros_like(x0)
             coords_lvl = torch.cat([x0, y0], dim=-1)
             samp_corr = F.grid_sample(corr, coords_lvl, align_corners=True, mode='bilinear')
+            # print(samp_corr.shape)
             samp_corr = samp_corr.view(batch, h, w, -1)
             out_pyramid.append(samp_corr)
 

@@ -52,18 +52,61 @@ class ROmniStereo(torch.nn.Module):
             if isinstance(m, nn.BatchNorm2d):
                 m.eval()
 
-    def spherical_sweep(self, fisheye_feats, grids):
-        bs = fisheye_feats[0].shape[0]
-        grids_pad = [torch.cat([torch.zeros_like(grid[..., :1]), grid], dim=-1) for grid in grids]
-        sph_feats = []
-        for feat, grid in zip(fisheye_feats, grids_pad):
-            sph_feat = F.grid_sample(feat[..., None], grid.repeat(bs, 1, 1, 1, 1), align_corners=True)
-            sph_feats.append(sph_feat)
+    # def spherical_sweep(self, fisheye_feats, grids):
+    #     bs = fisheye_feats[0].shape[0]
+    #     grids_pad = [torch.cat([torch.zeros_like(grid[..., :1]), grid], dim=-1) for grid in grids]
+    #     sph_feats = []
+    #     for feat, grid in zip(fisheye_feats, grids_pad):
+    #         sph_feat = F.grid_sample(feat[..., None], grid.repeat(bs, 1, 1, 1, 1), align_corners=True)
+    #         sph_feats.append(sph_feat)
 
-        # embed sampling girds
-        sph_feats = sph_feats + [grid.permute(-1, 0, 1, 2).repeat(bs, 1, 1, 1, 1) for grid in grids]
+    #     # embed sampling girds
+    #     sph_feats = sph_feats + [grid.permute(-1, 0, 1, 2).repeat(bs, 1, 1, 1, 1) for grid in grids]
+
+    #     return sph_feats
+    def spherical_sweep(self, fisheye_feats, grids):
+        # fisheye_feats: List của 3 tensor [B, C, H_in, W_in]
+        # grids: List của 3 tensor [H_out, W_out, D, 2]
+        bs = fisheye_feats[0].shape[0]
+        ch = fisheye_feats[0].shape[1]
+        
+        sph_feats = []
+        for feat, grid in zip(fisheye_feats, grids):
+            # grid ban đầu: [H_out, W_out, D, 2]
+            h_out, w_out, d_out, _ = grid.shape
+            
+            # 1. Chuẩn bị Grid 4D: [D, H, W, 2]
+            grid_4d = grid.permute(2, 0, 1, 3) 
+            
+            # 2. Đồng bộ Batch Size cho Grid và Feat
+            # Chúng ta cần lặp lại Grid cho mỗi item trong Batch
+            # Grid: [D, H, W, 2] -> [D, B, H, W, 2] -> [D*B, H, W, 2]
+            # Cách này giúp ONNX hiểu là mỗi ảnh trong batch đều dùng chung bộ grid planes
+            grid_4d_expanded = grid_4d.unsqueeze(1).expand(-1, bs, -1, -1, -1).reshape(d_out * bs, h_out, w_out, 2)
+            
+            # 3. Mở rộng Feat: [B, C, H, W] -> [D*B, C, H, W]
+            # Lưu ý: repeat theo chiều 0 sẽ tạo ra trình tự [B0, B1, B2, B3, B0, B1...]
+            # khớp với trình tự của grid_4d_expanded ở trên
+            feat_expanded = feat.repeat(d_out, 1, 1, 1)
+            
+            # 4. Grid Sample 4D (Hỗ trợ HTP)
+            # Output: [D*B, C, H_out, W_out]
+            sampled_2d = F.grid_sample(feat_expanded, grid_4d_expanded, align_corners=True, mode='bilinear')
+            
+            # 5. Reshape lại về Volume 5D: [B, C, H_out, W_out, D]
+            # [D*B, C, H, W] -> [D, B, C, H, W] -> [B, C, H, W, D]
+            sampled_5d = sampled_2d.view(d_out, bs, ch, h_out, w_out).permute(1, 2, 3, 4, 0)
+            sph_feats.append(sampled_5d)
+
+        # Xử lý các grids cho phần embedding (vẫn phải đưa về 5D để Generator nhận)
+        for grid in grids:
+            # grid: [H, W, D, 2] -> [1, 2, H, W, D] -> [B, 2, H, W, D]
+            g_emb = grid.permute(3, 0, 1, 2).unsqueeze(0).repeat(bs, 1, 1, 1, 1)
+            sph_feats.append(g_emb)
 
         return sph_feats
+
+
 
     def upsample_invdepth_idx(self, invdepth, mask):
         """ Upsample invdepth field [H/2**n_ds, W/2**n_ds] -> [H, W] using convex combination """
