@@ -66,9 +66,7 @@ class CorrBlock1D:
         assert fmap1.shape == fmap2.shape
         bs, ch, h, w, nd = fmap1.shape
         
-        # Phép tính này tương đương với einsum 'aijkh,aijkh->ajkh'
-        # Nhân từng phần tử rồi cộng gộp theo chiều channel (dim=1)
         corr = (fmap1 * fmap2).sum(dim=1)
-        
         corr = corr.reshape(bs, h, w, 1, nd).contiguous()
-        return corr / torch.sqrt(torch.tensor(ch).float())
+        # Dùng toán tử lũy thừa để ONNX tự tính hằng số thay vì tạo node Tensor
+        return corr / (ch ** 0.5)

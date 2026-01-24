@@ -37,7 +37,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ckpt_path', type=str, required=True)
-    parser.add_argument('--output_path', type=str, default="romnistereo_v11.onnx")
+    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo_test_1.onnx")
     parser.add_argument('--iters', type=int, default=12)
     args = parser.parse_args()
 

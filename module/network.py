@@ -123,30 +123,37 @@ class ROmniStereo(torch.nn.Module):
         return up_invdepth.reshape(bs, ch, factor*h, factor*w)
 
     def volume_sample(self, feat_volume, invdepth_idx):
+        # feat_volume: [B, C, H, W, D]
+        # invdepth_idx: [B, 1, H, W] (giá trị float từ 0 đến D-1)
         bs, ch, h, w, n_invd = feat_volume.shape
 
-        invdepth_idx_floor = torch.floor(invdepth_idx)
-        invdepth_idx_ceil = invdepth_idx_floor + 1
-        invdepth_idx_floor = torch.clamp(invdepth_idx_floor, 0, n_invd-1)
-        invdepth_idx_ceil = torch.clamp(invdepth_idx_ceil, 0, n_invd - 1)
-        invdepth_idx = torch.clamp(invdepth_idx, 0, n_invd - 1)
+        # 1. Chuyển Volume 5D về 4D để Grid Sample hỗ trợ
+        # Mục tiêu: Coi mỗi pixel (h, w) là một "dòng" dữ liệu dọc theo chiều D
+        # feat_volume: [B, C, H, W, D] -> [B, C, H, D, W] -> [B*C*H, 1, D, W]
+        # (D là Height, W là Width của "ảnh" 2D giả định)
+        feat_4d = feat_volume.permute(0, 1, 2, 4, 3).reshape(bs * ch * h, 1, n_invd, w)
 
-        weight_floor = (invdepth_idx_ceil - invdepth_idx)
-        weight_floor[weight_floor == n_invd - 1] = 1.0
-        weight_ceil = (invdepth_idx - invdepth_idx_floor)
-        weight_ceil[invdepth_idx_ceil == 0] = 1.0
+        # 2. Tạo tọa độ Grid (Float32) để lấy mẫu chiều D
+        # Chiều X của grid (Width): Tương ứng với chiều W của feat_4d. 
+        # Ta muốn giữ nguyên pixel x hiện tại nên x = linspace(-1, 1)
+        grid_x = torch.linspace(-1, 1, w, device=invdepth_idx.device).view(1, 1, w, 1)
+        grid_x = grid_x.expand(bs * ch * h, 1, w, 1)
 
-        # invdepth_idx_floor = invdepth_idx_floor.long()
-        # invdepth_idx_ceil = invdepth_idx_ceil.long()
+        # Chiều Y của grid (Height): Tương ứng với chiều D (Depth)
+        # Chuẩn hóa invdepth_idx từ [0, D-1] về [-1, 1]
+        norm_idx = (invdepth_idx.permute(0, 2, 3, 1).reshape(bs * h, 1, w, 1) * 2 / (n_invd - 1)) - 1
+        grid_y = norm_idx.repeat_interleave(ch, dim=0)
 
-        invdepth_idx_floor = invdepth_idx_floor.int()
-        invdepth_idx_ceil = invdepth_idx_ceil.int()
+        # Grid cuối cùng: [B*C*H, 1, W, 2]
+        grid = torch.cat([grid_x, grid_y], dim=-1)
 
+        # 3. Thực hiện lấy mẫu 4D (HTP hỗ trợ cực tốt Float32 bilinear)
+        # sampled: [B*C*H, 1, 1, W]
+        sampled = F.grid_sample(feat_4d, grid, align_corners=True, mode='bilinear')
 
-        feat_floor = torch.gather(feat_volume, 4, invdepth_idx_floor.repeat(1, ch, 1, 1).unsqueeze(-1))[..., 0]
-        feat_ceil = torch.gather(feat_volume, 4, invdepth_idx_ceil.repeat(1, ch, 1, 1).unsqueeze(-1))[..., 0]
+        # Reshape lại về đúng định dạng ban đầu: [B, C, H, W]
+        return sampled.view(bs, ch, h, w)
 
-        return weight_ceil*feat_ceil + weight_floor*feat_floor
 
     def forward(self, imgs, grids, iters=12, test_mode=False):
         with autocast(enabled=self.opts.mixed_precision):
