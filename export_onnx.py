@@ -25,8 +25,8 @@ class ROmniStereoONNX(nn.Module):
 
 def get_opts():
     opts = Edict()
-    opts.data_opts = Edict({'phi_deg': 45.0, 'num_invdepth': 192, 'equirect_size': [160, 640], 'num_downsample': 1, 'use_rgb': False})
-    opts.net_opts = Edict({'base_channel': 32, 'num_invdepth': 192, 'use_rgb': False, 'encoder_downsample_twice': False, 'num_downsample': 1, 'corr_levels': 4, 'corr_radius': 4, 'mixed_precision': False, 'fix_bn': False})
+    opts.data_opts = Edict({'phi_deg': 45.0, 'num_invdepth': 128, 'equirect_size': [160, 640], 'num_downsample': 1, 'use_rgb': False})
+    opts.net_opts = Edict({'base_channel': 16, 'num_invdepth': 128, 'use_rgb': False, 'encoder_downsample_twice': False, 'num_downsample': 1, 'corr_levels': 4, 'corr_radius': 4, 'mixed_precision': False, 'fix_bn': False})
     return opts
 
 def main():
@@ -37,8 +37,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ckpt_path', type=str, required=True)
-    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo_v20.onnx")
-    parser.add_argument('--iters', type=int, default=12)
+    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo_v11_128_16_5.onnx")
+    parser.add_argument('--iters', type=int, default=5)
     args = parser.parse_args()
 
     device = torch.device("cpu")

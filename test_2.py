@@ -1,17 +1,26 @@
-import onnx
-import onnx_graphsurgeon as gs
-import numpy as np
+import cv2
 
-model = onnx.load("romnistereo_v11_fixed.onnx")
-graph = gs.import_onnx(model)
+# Đường dẫn ảnh
+path1 = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable\omnithings\mask1.png"
+path2 = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable\omnithings\mask2.png"
+path3 = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable\omnithings\mask3.png"
 
-for node in graph.nodes:
-    if node.op == "Unsqueeze":
-        for i, inp in enumerate(node.inputs):
-            if isinstance(inp, gs.Constant):
-                if inp.values.dtype == np.int64:
-                    print("Fix Unsqueeze axis INT64 → INT32")
-                    inp.values = inp.values.astype(np.int32)
+# Đọc ảnh grayscale
+mask1 = cv2.imread(path1, cv2.IMREAD_GRAYSCALE)
+mask2 = cv2.imread(path2, cv2.IMREAD_GRAYSCALE)
+mask3 = cv2.imread(path3, cv2.IMREAD_GRAYSCALE)
 
-graph.cleanup().toposort()
-onnx.save(gs.export_onnx(graph), "model_fixed.onnx")
+# Resize (width=400, height=384)
+mask1 = cv2.resize(mask1, (400, 384), interpolation=cv2.INTER_NEAREST)
+mask2 = cv2.resize(mask2, (400, 384), interpolation=cv2.INTER_NEAREST)
+mask3 = cv2.resize(mask3, (400, 384), interpolation=cv2.INTER_NEAREST)
+
+import cv2
+import os
+
+save_dir = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable\omnithings_resized"
+os.makedirs(save_dir, exist_ok=True)
+
+cv2.imwrite(os.path.join(save_dir, "mask1.png"), mask1)
+cv2.imwrite(os.path.join(save_dir, "mask2.png"), mask2)
+cv2.imwrite(os.path.join(save_dir, "mask3.png"), mask3)

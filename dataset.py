@@ -219,7 +219,9 @@ class Dataset(torch.utils.data.Dataset):
         for i in range(3):
             file_path = osp.join(self.db_path, self.img_fmt % (i + 1, fidx))
             I = readImage(file_path)
-            I = cv2.resize(I, (800, 768), interpolation=cv2.INTER_LINEAR)
+            # I = cv2.resize(I, (800, 768), interpolation=cv2.INTER_LINEAR)
+            I = cv2.resize(I, (400, 384), interpolation=cv2.INTER_LINEAR)
+
 
             if out_raw_imgs: raw_imgs.append(I)
         if fidx in self.train_idx:
