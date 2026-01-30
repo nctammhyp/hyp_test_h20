@@ -347,7 +347,10 @@ class Dataset(torch.utils.data.Dataset):
     def loadGTInvdepthIndex(self, fidx, remove_gt_noise=True,
                             morph_win_size=5):
         h, w = self.equirect_size
-        gt_depth_file = osp.join(self.db_path, self.gt_depth_fmt % (w, fidx))
+        # gt_depth_file = osp.join(self.db_path, self.gt_depth_fmt % (w, fidx))
+        # gt = self.readInvdepth(gt_depth_file)
+        gt_w_folder = 640 
+        gt_depth_file = osp.join(self.db_path, self.gt_depth_fmt % (gt_w_folder, fidx))
         gt = self.readInvdepth(gt_depth_file)
 
         # --- SỬA TẠI ĐÂY: Resize GT để khớp với equirect_size ---
