@@ -1,0 +1,5 @@
+img0:=imgs\img0_frame9.raw img1:=imgs\img1_frame9.raw img2:=imgs\img2_frame9.raw grid0:=grids\grid0.raw grid1:=grids\grid1.raw grid2:=grids\grid2.raw
+img0:=imgs\img0_frame782.raw img1:=imgs\img1_frame782.raw img2:=imgs\img2_frame782.raw grid0:=grids\grid0.raw grid1:=grids\grid1.raw grid2:=grids\grid2.raw
+img0:=imgs\img0_frame342.raw img1:=imgs\img1_frame342.raw img2:=imgs\img2_frame342.raw grid0:=grids\grid0.raw grid1:=grids\grid1.raw grid2:=grids\grid2.raw
+img0:=imgs\img0_frame347.raw img1:=imgs\img1_frame347.raw img2:=imgs\img2_frame347.raw grid0:=grids\grid0.raw grid1:=grids\grid1.raw grid2:=grids\grid2.raw
+img0:=imgs\img0_frame1136.raw img1:=imgs\img1_frame1136.raw img2:=imgs\img2_frame1136.raw grid0:=grids\grid0.raw grid1:=grids\grid1.raw grid2:=grids\grid2.raw
