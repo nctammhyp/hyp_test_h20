@@ -10,3 +10,8 @@ aimet_export
 qnn_raw_data
 *.onnx
 *.pth
+calibration_data/
+*.zip
+*.data
+*.tflite
+*.ipynb
