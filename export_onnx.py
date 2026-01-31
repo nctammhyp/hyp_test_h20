@@ -10,7 +10,7 @@ import onnx
 from module.network import ROmniStereo
 
 class ROmniStereoONNX(nn.Module):
-    def __init__(self, model, iters=12):
+    def __init__(self, model, iters=5):
         super().__init__()
         self.model = model
         self.iters = iters
@@ -25,7 +25,7 @@ class ROmniStereoONNX(nn.Module):
 
 def get_opts():
     opts = Edict()
-    opts.data_opts = Edict({'phi_deg': 45.0, 'num_invdepth': 128, 'equirect_size': [160, 640], 'num_downsample': 1, 'use_rgb': False})
+    opts.data_opts = Edict({'phi_deg': 45.0, 'num_invdepth': 128, 'equirect_size': [128, 400], 'num_downsample': 1, 'use_rgb': False})
     opts.net_opts = Edict({'base_channel': 16, 'num_invdepth': 128, 'use_rgb': False, 'encoder_downsample_twice': False, 'num_downsample': 1, 'corr_levels': 4, 'corr_radius': 4, 'mixed_precision': False, 'fix_bn': False})
     return opts
 
@@ -37,7 +37,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ckpt_path', type=str, required=True)
-    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo_v11_128_16_5.onnx")
+    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v13_bs16_e194.onnx")
     parser.add_argument('--iters', type=int, default=5)
     args = parser.parse_args()
 
@@ -55,7 +55,9 @@ def main():
     onnx_model_wrapper.eval()
 
     # --- DUMMY INPUTS ---
-    H_in, W_in = 768, 800
+    # H_in, W_in = 768, 800
+    H_in, W_in = 384, 400
+
     C_in = 1 # Grayscale
     
     img0 = torch.randn(1, C_in, H_in, W_in)

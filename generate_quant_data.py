@@ -15,7 +15,8 @@ OUTPUT_DIR = "calibration_data" # Tên folder sẽ tạo ra
 NUM_SAMPLES = 5  # Số lượng ảnh mẫu để Quantization (50-100 là đủ)
 
 # Kích thước Input
-INPUT_H, INPUT_W = 768, 800
+# INPUT_H, INPUT_W = 768, 800
+INPUT_H, INPUT_W = 384, 400
 
 def ensure_dir(path):
     if not os.path.exists(path):
