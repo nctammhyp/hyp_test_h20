@@ -72,7 +72,7 @@ parser.add_argument('--fix_bn', action='store_true', help='fix batch normalizati
 
 # training options
 parser.add_argument('--total_epochs', type=int, default=30, help='total epochs of training')
-parser.add_argument('--batch_size', type=int, default=4, help='batch size')
+parser.add_argument('--batch_size', type=int, default=1, help='batch size')
 parser.add_argument('--train_iters', type=int, default=5,
                     help="number of updates to the disparity field in each forward pass.")
 parser.add_argument('--valid_iters', type=int, default=5,
@@ -220,8 +220,8 @@ def train(epoch_total, load_state):
             valid = valid.cuda()
             gt = gt.cuda()
 
-            print(f"img: {imgs[0].shape}")
-            print(f"grid: {grids[0].shape}")
+            # print(f"img: {imgs[0].shape}")
+            # print(f"grid: {grids[0].shape}")
 
             # net.zero_grad()
             optimizer.zero_grad()
