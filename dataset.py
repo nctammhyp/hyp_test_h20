@@ -89,7 +89,9 @@ class Dataset(torch.utils.data.Dataset):
         # opts.gt_depth_fmt = 'omnidepth_gt_%d/%05d.png'  # [equi_w, fidx]
         opts.gt_depth_fmt = 'omnidepth_gt_%d/%05d.npy'  # [equi_w, fidx]
 
-        opts.equirect_size, opts.num_invdepth = [160, 640], 192
+        # opts.equirect_size, opts.num_invdepth = [160, 640], 192
+        opts.equirect_size, opts.num_invdepth = [128, 400], 128
+
         opts.num_downsample = 1
         opts.phi_deg, opts.phi2_deg = 45, -1.0
         opts.min_depth = 0.5  # meter scale

@@ -30,10 +30,16 @@ class QuantDataGenerator:
         opts.use_rgb = False
         opts.num_downsample = 1
         
+        # --- [FIX] Thêm dòng này để khớp với export_onnx.py ---
+        opts.equirect_size = [128, 400]  # Gốc là [160, 640]
+        opts.num_invdepth = 128          # Gốc là 192
+        # -----------------------------------------------------
+        
         # Load dataset tool để lấy config camera (OCam)
+        # Các tham số trong db_opts sẽ ghi đè config mặc định của dataset
         self.dataset = Dataset(db_name, db_opts=opts, load_lut=False, train=True, db_root=db_root)
         
-        # Tạo Grids (Lookup Tables) - Chỉ cần tạo 1 lần vì nó cố định
+        # Tạo Grids (Lookup Tables)
         print("--- Đang tính toán Rectification Grids ---")
         self.grids = self.dataset.buildLookupTable(output_gpu_tensor=False)
         self.masks = [cam.invalid_mask for cam in self.dataset.ocams]

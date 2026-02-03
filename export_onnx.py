@@ -36,7 +36,7 @@ def main():
     torch._C._jit_set_profiling_mode(False)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ckpt_path', type=str, required=True)
+    parser.add_argument('--ckpt_path', type=str, default=r"checkpoints/romnistereo32_v13_bs16_e194.pth")
     parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v13_bs16_e194.onnx")
     parser.add_argument('--iters', type=int, default=5)
     args = parser.parse_args()
@@ -66,8 +66,10 @@ def main():
 
     H_out = opts.data_opts.equirect_size[0] // 2
     W_out = opts.data_opts.equirect_size[1] // 2
-    D_out = 96 # num_invdepth // 2
-    grid_shape = (H_out, W_out, D_out, 2) # (80, 320, 96, 2)
+    D_out = 64 # num_invdepth // 2
+    grid_shape = (H_out, W_out, D_out, 2) # (80, 320, 64, 2)
+
+    print(f"Using dummy grid shape: {grid_shape}")
     
     grid0 = torch.randn(*grid_shape)
     grid1 = torch.randn(*grid_shape)
@@ -84,7 +86,7 @@ def main():
         (img0, img1, img2, grid0, grid1, grid2),
         args.output_path,
         export_params=True,
-        opset_version=11, # Quan trọng cho HTP
+        opset_version=18, # Quan trọng cho HTP
         do_constant_folding=True,
         input_names=input_names,
         output_names=output_names,

@@ -12,15 +12,15 @@ from dataset import Dataset
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-ONNX_PATH = r"F:\algo\mvs_v119\checkpoints\onnx\romnistereo_v20.onnx"
+ONNX_PATH = r"checkpoints/onnx/romnistereo32_v13_bs16_e194.onnx"
 DB_ROOT = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable"
 DB_NAME = "omnithings"
 
 # SỬA LẠI ĐƯỜNG DẪN ẢNH CỦA BẠN CHO ĐÚNG
 IMG_PATHS = [
-    r"F:\algo\mvs_v119\omnidata\hyp_01\cam1\00001.png",
-    r"F:\algo\mvs_v119\omnidata\hyp_01\cam2\00001.png",
-    r"F:\algo\mvs_v119\omnidata\hyp_01\cam3\00001.png"
+    r"F:\algo\mvs_v119\omnidata\hyp_02\cam1\00001.png",
+    r"F:\algo\mvs_v119\omnidata\hyp_02\cam2\00001.png",
+    r"F:\algo\mvs_v119\omnidata\hyp_02\cam3\00001.png"
 ]
 
 # =============================================================================
@@ -36,7 +36,9 @@ class DepthInference:
         if not os.path.exists(os.path.join(db_root, db_name)):
             raise FileNotFoundError(f"Database not found: {os.path.join(db_root, db_name)}")
 
-        self.input_size = (800, 768) # Kích thước input resize
+        # self.input_size = (800, 768) # Kích thước input resize
+        self.input_size = (400, 384) # Kích thước input resize
+
         
         # --- A. Load Calibration (Tái sử dụng class Dataset) ---
         # Tạo config giả để tránh lỗi 'use_rgb' trong dataset.py
@@ -55,6 +57,8 @@ class DepthInference:
         # Lưu ý: Model ONNX nhận Grid Rank 4 [H, W, D, 2], KHÔNG thêm batch dimension
         self.grids_onnx = [g.astype(np.float32) for g in self.grids]
 
+        print(f" -> Grids ready with shapes: {[g.shape for g in self.grids_onnx]}")
+
         # --- B. Load ONNX Model ---
         print(f" -> Loading ONNX Session...")
         providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
@@ -69,7 +73,9 @@ class DepthInference:
         """ Đọc ảnh -> Resize -> Normalize -> Add Batch Dim """
         if not os.path.exists(img_path):
             print(f"⚠️ Warning: Image not found {img_path}, using black image.")
-            img = np.zeros((768, 800), dtype=np.uint8)
+            # img = np.zeros((768, 800), dtype=np.uint8)
+            img = np.zeros((384, 400), dtype=np.uint8)
+
         else:
             img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
             
@@ -80,9 +86,9 @@ class DepthInference:
         
         # 2. Normalize (Giống logic dataset.py)
         mask = self.masks[cam_idx]
-        if mask is not None and mask.shape != (768, 800):
-             mask = cv2.resize(mask, (800, 768), interpolation=cv2.INTER_NEAREST)
-             
+        if mask is not None and mask.shape != (384, 400):
+             mask = cv2.resize(mask, (400, 384), interpolation=cv2.INTER_NEAREST)
+
         img = img.astype(np.float32)
         
         # Tính mean/std trên vùng valid
