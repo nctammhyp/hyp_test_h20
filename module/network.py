@@ -64,48 +64,92 @@ class ROmniStereo(torch.nn.Module):
     #     sph_feats = sph_feats + [grid.permute(-1, 0, 1, 2).repeat(bs, 1, 1, 1, 1) for grid in grids]
 
     #     return sph_feats
-    def spherical_sweep(self, fisheye_feats, grids):
-        # fisheye_feats: List của 3 tensor [B, C, H_in, W_in]
-        # grids: List của 3 tensor [H_out, W_out, D, 2]
-        bs = fisheye_feats[0].shape[0]
-        ch = fisheye_feats[0].shape[1]
+
+
+    # def spherical_sweep(self, fisheye_feats, grids):
+    #     # fisheye_feats: List của 3 tensor [B, C, H_in, W_in]
+    #     # grids: List của 3 tensor [H_out, W_out, D, 2]
+    #     bs = fisheye_feats[0].shape[0]
+    #     ch = fisheye_feats[0].shape[1]
         
+    #     sph_feats = []
+    #     for feat, grid in zip(fisheye_feats, grids):
+    #         # grid ban đầu: [H_out, W_out, D, 2]
+    #         h_out, w_out, d_out, _ = grid.shape
+            
+    #         # 1. Chuẩn bị Grid 4D: [D, H, W, 2]
+    #         grid_4d = grid.permute(2, 0, 1, 3) 
+            
+    #         # 2. Đồng bộ Batch Size cho Grid và Feat
+    #         # Chúng ta cần lặp lại Grid cho mỗi item trong Batch
+    #         # Grid: [D, H, W, 2] -> [D, B, H, W, 2] -> [D*B, H, W, 2]
+    #         # Cách này giúp ONNX hiểu là mỗi ảnh trong batch đều dùng chung bộ grid planes
+    #         grid_4d_expanded = grid_4d.unsqueeze(1).expand(-1, bs, -1, -1, -1).reshape(d_out * bs, h_out, w_out, 2)
+            
+    #         # 3. Mở rộng Feat: [B, C, H, W] -> [D*B, C, H, W]
+    #         # Lưu ý: repeat theo chiều 0 sẽ tạo ra trình tự [B0, B1, B2, B3, B0, B1...]
+    #         # khớp với trình tự của grid_4d_expanded ở trên
+    #         feat_expanded = feat.repeat(d_out, 1, 1, 1)
+            
+    #         # 4. Grid Sample 4D (Hỗ trợ HTP)
+    #         # Output: [D*B, C, H_out, W_out]
+    #         sampled_2d = F.grid_sample(feat_expanded, grid_4d_expanded, align_corners=True, mode='bilinear')
+            
+    #         # 5. Reshape lại về Volume 5D: [B, C, H_out, W_out, D]
+    #         # [D*B, C, H, W] -> [D, B, C, H, W] -> [B, C, H, W, D]
+    #         sampled_5d = sampled_2d.view(d_out, bs, ch, h_out, w_out).permute(1, 2, 3, 4, 0)
+    #         sph_feats.append(sampled_5d)
+
+    #     # Xử lý các grids cho phần embedding (vẫn phải đưa về 5D để Generator nhận)
+    #     for grid in grids:
+    #         # grid: [H, W, D, 2] -> [1, 2, H, W, D] -> [B, 2, H, W, D]
+    #         g_emb = grid.permute(3, 0, 1, 2).unsqueeze(0).repeat(bs, 1, 1, 1, 1)
+    #         sph_feats.append(g_emb)
+
+    #     return sph_feats
+
+    def spherical_sweep(self, fisheye_feats, grids):
+        # fisheye_feats: List 3 tensor [B, C, H_in, W_in]
+        # grids: List 3 tensor [H_out, W_out, D, 2]
+        
+        bs = fisheye_feats[0].shape[0]
         sph_feats = []
+
+        # Duyệt qua từng camera
         for feat, grid in zip(fisheye_feats, grids):
-            # grid ban đầu: [H_out, W_out, D, 2]
+            # grid shape: [H_out, W_out, D, 2]
             h_out, w_out, d_out, _ = grid.shape
             
-            # 1. Chuẩn bị Grid 4D: [D, H, W, 2]
-            grid_4d = grid.permute(2, 0, 1, 3) 
+            # Thay vì repeat feat lớn, ta lặp qua từng lớp chiều sâu d
+            # Cách này chậm hơn xíu ở Python nhưng tiết kiệm 99% RAM cho việc build engine
+            sampled_slices = []
             
-            # 2. Đồng bộ Batch Size cho Grid và Feat
-            # Chúng ta cần lặp lại Grid cho mỗi item trong Batch
-            # Grid: [D, H, W, 2] -> [D, B, H, W, 2] -> [D*B, H, W, 2]
-            # Cách này giúp ONNX hiểu là mỗi ảnh trong batch đều dùng chung bộ grid planes
-            grid_4d_expanded = grid_4d.unsqueeze(1).expand(-1, bs, -1, -1, -1).reshape(d_out * bs, h_out, w_out, 2)
+            for d in range(d_out):
+                # 1. Lấy grid của lớp chiều sâu thứ d: [H_out, W_out, 2]
+                grid_slice = grid[:, :, d, :] 
+                
+                # 2. Thêm batch dimension và lặp cho đúng batch size: [B, H_out, W_out, 2]
+                # (Thao tác này rất nhẹ vì grid nhỏ hơn feat nhiều)
+                grid_slice_b = grid_slice.unsqueeze(0).repeat(bs, 1, 1, 1)
+                
+                # 3. Grid Sample cho lớp này: Output [B, C, H_out, W_out]
+                # feat giữ nguyên [B, C, H_in, W_in], không cần repeat -> Tiết kiệm RAM
+                sample = F.grid_sample(feat, grid_slice_b, align_corners=True, mode='bilinear')
+                
+                sampled_slices.append(sample)
             
-            # 3. Mở rộng Feat: [B, C, H, W] -> [D*B, C, H, W]
-            # Lưu ý: repeat theo chiều 0 sẽ tạo ra trình tự [B0, B1, B2, B3, B0, B1...]
-            # khớp với trình tự của grid_4d_expanded ở trên
-            feat_expanded = feat.repeat(d_out, 1, 1, 1)
-            
-            # 4. Grid Sample 4D (Hỗ trợ HTP)
-            # Output: [D*B, C, H_out, W_out]
-            sampled_2d = F.grid_sample(feat_expanded, grid_4d_expanded, align_corners=True, mode='bilinear')
-            
-            # 5. Reshape lại về Volume 5D: [B, C, H_out, W_out, D]
-            # [D*B, C, H, W] -> [D, B, C, H, W] -> [B, C, H, W, D]
-            sampled_5d = sampled_2d.view(d_out, bs, ch, h_out, w_out).permute(1, 2, 3, 4, 0)
-            sph_feats.append(sampled_5d)
+            # 4. Ghép lại thành Volume 5D: [B, C, H_out, W_out, D]
+            # Stack dọc theo chiều cuối cùng
+            sampled_volume = torch.stack(sampled_slices, dim=-1)
+            sph_feats.append(sampled_volume)
 
-        # Xử lý các grids cho phần embedding (vẫn phải đưa về 5D để Generator nhận)
+        # Xử lý embedding grids (Giữ nguyên logic cũ nhưng đảm bảo dimension)
         for grid in grids:
-            # grid: [H, W, D, 2] -> [1, 2, H, W, D] -> [B, 2, H, W, D]
+            # grid: [H, W, D, 2] -> [2, H, W, D] -> [1, 2, H, W, D] -> [B, 2, H, W, D]
             g_emb = grid.permute(3, 0, 1, 2).unsqueeze(0).repeat(bs, 1, 1, 1, 1)
             sph_feats.append(g_emb)
 
         return sph_feats
-
 
 
     def upsample_invdepth_idx(self, invdepth, mask):
