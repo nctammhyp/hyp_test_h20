@@ -57,8 +57,8 @@ class ROmniStereoONNX(nn.Module):
 def main():
     parser = argparse.ArgumentParser()
     # Đường dẫn đến file .pth đã train (trên Windows)
-    parser.add_argument('--ckpt_path', type=str, default=r"checkpoints/romnistereo32_v13_bs16_e194.pth", help="Path to .pth checkpoint")
-    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v13_bs16_e194_jetson.onnx", help="Output ONNX file")
+    parser.add_argument('--ckpt_path', type=str, default=r"checkpoints/romnistereo32_v14_bs16_e1.pth", help="Path to .pth checkpoint")
+    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v14_bs16_e1_jetson.onnx", help="Output ONNX file")
     args = parser.parse_args()
 
     # 1. Load Config & Model
@@ -115,7 +115,11 @@ def main():
         args.output_path,
         input_names=["img0", "img1", "img2", "grid0", "grid1", "grid2"],
         output_names=["depth_map"],
-        opset_version=13,            # Opset 13 rất ổn định cho Jetson/TensorRT
+        
+        # --- SỬA DÒNG NÀY ---
+        opset_version=11,  # --- Đổi từ 13 thành 11
+        # --------------------
+        
         do_constant_folding=True,
         keep_initializers_as_inputs=False
     )

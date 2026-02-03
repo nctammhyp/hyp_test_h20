@@ -55,12 +55,12 @@ parser.add_argument('--dbname', nargs='+', default=['omnithings'], type=str,
 
 # data options
 parser.add_argument('--phi_deg', type=float, default=45.0, help='phi_deg')
-parser.add_argument('--num_invdepth', type=int, default=128, metavar='N', help='number of disparity')
+parser.add_argument('--num_invdepth', type=int, default=48, metavar='N', help='number of disparity')
 parser.add_argument('--equirect_size', type=int, nargs='+', default=[160, 640], help="size of out ERP.")
 parser.add_argument('--use_rgb', action='store_true', help='use 3-channel rgb color images as input')
 
 # net options
-parser.add_argument('--base_channel', type=int, default=16, help='base channel of the network')
+parser.add_argument('--base_channel', type=int, default=8, help='base channel of the network')
 parser.add_argument('--encoder_downsample_twice', action='store_true',
                     help='the feature extractor downsample the fisheye input twice instead once.')
 parser.add_argument('--num_downsample', type=int, default=1, help="resolution of the disparity field (1/2^K)")
@@ -72,7 +72,7 @@ parser.add_argument('--fix_bn', action='store_true', help='fix batch normalizati
 
 # training options
 parser.add_argument('--total_epochs', type=int, default=30, help='total epochs of training')
-parser.add_argument('--batch_size', type=int, default=1, help='batch size')
+parser.add_argument('--batch_size', type=int, default=4, help='batch size')
 parser.add_argument('--train_iters', type=int, default=5,
                     help="number of updates to the disparity field in each forward pass.")
 parser.add_argument('--valid_iters', type=int, default=5,
