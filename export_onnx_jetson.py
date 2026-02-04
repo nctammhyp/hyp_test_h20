@@ -16,14 +16,14 @@ def get_opts():
     # Config khớp với export_onnx cũ
     opts.data_opts = Edict({
         'phi_deg': 45.0, 
-        'num_invdepth': 128, 
+        'num_invdepth': 48, 
         'equirect_size': [128, 400], 
         'num_downsample': 1, 
         'use_rgb': False
     })
     opts.net_opts = Edict({
         'base_channel': 16, # Lưu ý: Bạn dùng 16, code cũ dùng 32. Hãy chắc chắn model .pth được train với 16.
-        'num_invdepth': 128, 
+        'num_invdepth': 48, 
         'use_rgb': False, 
         'encoder_downsample_twice': False, 
         'num_downsample': 1, 
@@ -49,7 +49,7 @@ class ROmniStereoONNX(nn.Module):
         
         # Quan trọng: test_mode=True để lấy kết quả depth cuối cùng
         # iters=12 là số vòng lặp GRU mặc định lúc inference
-        return self.model(imgs, grids, iters=12, test_mode=True)
+        return self.model(imgs, grids, iters=5, test_mode=True)
 
 # ==========================================
 # 3. MAIN EXPORT FUNCTION
