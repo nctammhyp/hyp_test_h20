@@ -9,8 +9,8 @@ import gc
 
 # ================= CẤU HÌNH (SỬA ĐƯỜNG DẪN NẾU CẦN) =================
 # Lưu ý: Hãy chắc chắn bạn đang dùng file ONNX được export với Opset 13
-ONNX_PATH = "checkpoints/onnx/romnistereo32_v14_bs16_e1_jetson.onnx"
-ENGINE_PATH = "checkpoints/onnx/romnistereo_int8_v2.engine"
+ONNX_PATH = "checkpoints/onnx/romnistereo32_v19_bs16_e0_jetson.onnx"
+ENGINE_PATH = "checkpoints/onnx/romnistereo32_v19_bs16_e0_jetson.engine"
 CALIB_DATA_DIR = "calib_data_npy"
 CACHE_FILE = "calib.cache"
 BATCH_SIZE = 1
@@ -195,6 +195,6 @@ def build_engine():
     except Exception as e:
         print(f"\n❌ Có lỗi (có thể bỏ qua nếu file cache đã được tạo): {e}")
 
-        
+
 if __name__ == "__main__":
     build_engine()

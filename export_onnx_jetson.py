@@ -16,14 +16,14 @@ def get_opts():
     # Config khớp với export_onnx cũ
     opts.data_opts = Edict({
         'phi_deg': 45.0, 
-        'num_invdepth': 48, 
+        'num_invdepth': 128, 
         'equirect_size': [128, 400], 
         'num_downsample': 1, 
         'use_rgb': False
     })
     opts.net_opts = Edict({
         'base_channel': 16, # Lưu ý: Bạn dùng 16, code cũ dùng 32. Hãy chắc chắn model .pth được train với 16.
-        'num_invdepth': 48, 
+        'num_invdepth': 128, 
         'use_rgb': False, 
         'encoder_downsample_twice': False, 
         'num_downsample': 1, 
@@ -57,8 +57,8 @@ class ROmniStereoONNX(nn.Module):
 def main():
     parser = argparse.ArgumentParser()
     # Đường dẫn đến file .pth đã train (trên Windows)
-    parser.add_argument('--ckpt_path', type=str, default=r"checkpoints/romnistereo32_v14_bs16_e1.pth", help="Path to .pth checkpoint")
-    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v14_bs16_e1_jetson.onnx", help="Output ONNX file")
+    parser.add_argument('--ckpt_path', type=str, default=r"checkpoints/romnistereo32_v19_bs16_e0.pth", help="Path to .pth checkpoint")
+    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v19_bs16_e0_jetson.onnx", help="Output ONNX file")
     args = parser.parse_args()
 
     # 1. Load Config & Model
