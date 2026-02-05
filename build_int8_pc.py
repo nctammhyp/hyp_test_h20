@@ -9,8 +9,8 @@ import gc
 
 # ================= CẤU HÌNH (SỬA ĐƯỜNG DẪN NẾU CẦN) =================
 # Lưu ý: Hãy chắc chắn bạn đang dùng file ONNX được export với Opset 13
-ONNX_PATH = "checkpoints/onnx/romnistereo32_v19_bs16_e0_jetson.onnx"
-ENGINE_PATH = "checkpoints/onnx/romnistereo32_v19_bs16_e0_jetson.engine"
+ONNX_PATH = "checkpoints/onnx/romnistereo32_v20_bs8_e46_jetson.onnx"
+ENGINE_PATH = "checkpoints/onnx/romnistereo32_v20_bs8_e46_jetson_pc.engine"
 CALIB_DATA_DIR = "calib_data_npy"
 CACHE_FILE = "calib.cache"
 BATCH_SIZE = 1

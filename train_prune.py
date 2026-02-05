@@ -33,16 +33,16 @@ except:
 parser = ArgumentParser(description='Iterative Pruning with Best Checkpoint Recovery')
 
 parser.add_argument('--name', default='ROmniPruned', help="name of your experiment")
-parser.add_argument('--restore_ckpt', help="restore checkpoint")
+parser.add_argument('--restore_ckpt', default='/home/sw-tamnguyen/Desktop/depth_project/hyp_test_h20/checkpoints/romnistereo32_v20_bs8/romnistereo32_v20_bs8_e46.pth')
 # parser.add_argument('--db_root', default=r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable", type=str)
 parser.add_argument('--db_root', default='/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/hyp_data_01_trainable/', type=str, help='path to dataset')
 
 parser.add_argument('--dbname', nargs='+', default=['omnithings'], type=str)
 parser.add_argument('--phi_deg', type=float, default=45.0)
-parser.add_argument('--num_invdepth', type=int, default=192)
-parser.add_argument('--equirect_size', type=int, nargs='+', default=[160, 640])
+parser.add_argument('--num_invdepth', type=int, default=48)
+parser.add_argument('--equirect_size', type=int, nargs='+', default=[128, 400])
 parser.add_argument('--use_rgb', action='store_true')
-parser.add_argument('--base_channel', type=int, default=32)
+parser.add_argument('--base_channel', type=int, default=8)
 parser.add_argument('--encoder_downsample_twice', action='store_true')
 parser.add_argument('--num_downsample', type=int, default=1)
 parser.add_argument('--corr_levels', type=int, default=4)
@@ -50,8 +50,8 @@ parser.add_argument('--corr_radius', type=int, default=4)
 parser.add_argument('--mixed_precision', action='store_true')
 parser.add_argument('--fix_bn', action='store_true')
 parser.add_argument('--batch_size', type=int, default=4)
-parser.add_argument('--train_iters', type=int, default=12)
-parser.add_argument('--valid_iters', type=int, default=12)
+parser.add_argument('--train_iters', type=int, default=5)
+parser.add_argument('--valid_iters', type=int, default=5)
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--wdecay', type=float, default=.00001)
 
@@ -99,7 +99,7 @@ def main():
     else:
         data = Dataset(args.dbname[0], opts.data_opts, db_root=args.db_root)
     
-    dbloader = torch.utils.data.DataLoader(data, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    dbloader = torch.utils.data.DataLoader(data, batch_size=args.batch_size, shuffle=True)
     grids = [torch.tensor(grid).cuda() for grid in data.grids]
 
     model = ROmniStereo(opts.net_opts).cuda()
@@ -110,7 +110,7 @@ def main():
         model.load_state_dict(state_dict)
         LOG_INFO(f"Loaded: {opts.snapshot_path}")
 
-    example_imgs = [torch.randn(1, 1, 768, 800).cuda() for _ in range(3)]
+    example_imgs = [torch.randn(1, 1, 384, 400).cuda() for _ in range(3)]
     
     # Pruner config
     ignored_layers = []

@@ -14,7 +14,7 @@ DB_NAME = "omnithings"
 
 # 2. Cấu hình Output
 OUTPUT_DIR = "calib_data_npy"
-NUM_SAMPLES = 100  # Số lượng mẫu dùng để Calibration (nên từ 100-200)
+NUM_SAMPLES = 1000  # Số lượng mẫu dùng để Calibration (nên từ 100-200)
 
 # 3. Cấu hình Model (Khớp hoàn toàn với export_onnx_jetson.py)
 # Input ảnh
@@ -22,7 +22,7 @@ H_IN, W_IN = 384, 400
 # Input Grid (equirect_size=[128, 400], num_downsample=1 => Grid size = 64x200)
 EQUIRECT_SIZE = [128, 400] 
 NUM_DOWNSAMPLE = 1
-NUM_INVDEPTH = 128
+NUM_INVDEPTH = 48
 USE_RGB = False
 
 def main():
@@ -65,7 +65,8 @@ def main():
 
     # 3. VÒNG LẶP LƯU ẢNH (INPUT ĐỘNG)
     # Lấy ngẫu nhiên hoặc tuần tự NUM_SAMPLES ảnh
-    indices = ds.test_idx[:NUM_SAMPLES]
+    # indices = ds.test_idx[:NUM_SAMPLES]
+    indices = ds.train_idx[:NUM_SAMPLES]
     if len(indices) < NUM_SAMPLES:
         indices = ds.test_idx # Lấy hết nếu không đủ
     
