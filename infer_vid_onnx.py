@@ -9,7 +9,7 @@ from dataset import Dataset
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-ONNX_PATH = r"F:\algo\mvs_v119\checkpoints\onnx\romnistereo32_v20_bs8_e46_jetson.onnx"
+ONNX_PATH = r"F:\algo\mvs_v119\checkpoints\onnx\romnistereo_pruned_v2_jetson.onnx"
 DB_ROOT = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable"
 DB_NAME = "omnithings"
 
@@ -19,7 +19,7 @@ VIDEO_PATHS = [
     r"F:\Full-Dataset\hyp_data\hyp_data_01\FisheyeDatasetDepth\video\Pos1_Fisheye_CameraUFR_2_3.mp4"
 ]
 
-OUTPUT_DIR = "video_inference_results"
+OUTPUT_DIR = r"F:\algo\mvs_v119\inference_result\video_inference_prunev2"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # =============================================================================

@@ -59,7 +59,7 @@ def main():
     
     # Duong dan den file .pth da train voi train_prune_v2.py
     parser.add_argument('--ckpt_path', type=str, 
-                        default=r"checkpoints/ROmniPruned_v2/ROmniPruned_v2_final.pth", 
+                        default=r"F:\algo\mvs_v119\checkpoints\romnistereo32_v21_bs8_prune_step0_final.pth", 
                         help="Path to .pth checkpoint (from train_prune_v2.py)")
     parser.add_argument('--output_path', type=str, 
                         default=r"checkpoints/onnx/romnistereo_pruned_v2_jetson.onnx", 
