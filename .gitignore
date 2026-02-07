@@ -22,3 +22,4 @@ calib_data_npy/
 *.png
 *.jpg
 *.jpeg
+inference_result
