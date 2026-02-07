@@ -17,3 +17,8 @@ calibration_data/
 *.ipynb
 calib_data_npy/
 *.cache
+*.mp4
+*.txt
+*.png
+*.jpg
+*.jpeg

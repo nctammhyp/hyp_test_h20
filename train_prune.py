@@ -56,7 +56,7 @@ parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--wdecay', type=float, default=.00001)
 
 # PRUNING PARAMS
-parser.add_argument('--pruning_ratio', type=float, default=0.5, help="Tổng tỉ lệ muốn cắt (vd 0.5 là 50%)")
+parser.add_argument('--pruning_ratio', type=float, default=1, help="Tổng tỉ lệ muốn cắt (vd 0.5 là 50%)")
 parser.add_argument('--pruning_steps', type=int, default=10, help="Số lần thực hiện cắt tỉa")
 parser.add_argument('--fine_tune_epochs', type=int, default=5, help="Số epoch tối đa để phục hồi mỗi bước")
 
