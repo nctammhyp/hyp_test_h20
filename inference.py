@@ -12,7 +12,7 @@ from dataset import Dataset
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-ONNX_PATH = r"F:\algo\mvs_v119\checkpoints\onnx\romnistereo32_v20_bs8_e46_jetson.onnx"
+ONNX_PATH = r"F:\algo\mvs_v119\checkpoints\onnx\romnistereo32_v21_bs8_prune_final_jetson.onnx"
 DB_ROOT = r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable"
 DB_NAME = "omnithings"
 

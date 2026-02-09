@@ -57,8 +57,8 @@ class ROmniStereoONNX(nn.Module):
 def main():
     parser = argparse.ArgumentParser()
     # Đường dẫn đến file .pth đã train (trên Windows)
-    parser.add_argument('--ckpt_path', type=str, default=r"checkpoints/romnistereo32_v20_bs8_prune_step9_final.pth", help="Path to .pth checkpoint")
-    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v20_bs8_e46_jetson_prune1.onnx", help="Output ONNX file")
+    parser.add_argument('--ckpt_path', type=str, default=r"checkpoints/romnistereo32_v21_bs8_prune_final.pth", help="Path to .pth checkpoint")
+    parser.add_argument('--output_path', type=str, default=r"checkpoints/onnx/romnistereo32_v21_bs8_prune_final_jetson.onnx", help="Output ONNX file")
     args = parser.parse_args()
 
     # 1. Load Config & Model

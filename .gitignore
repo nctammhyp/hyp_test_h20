@@ -24,3 +24,4 @@ calib_data_npy/
 *.jpeg
 inference_result
 quantize/test-2.ipynb
+.opencode

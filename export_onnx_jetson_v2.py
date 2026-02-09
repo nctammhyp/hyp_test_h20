@@ -59,10 +59,10 @@ def main():
     
     # Duong dan den file .pth da train voi train_prune_v2.py
     parser.add_argument('--ckpt_path', type=str, 
-                        default=r"F:\algo\mvs_v119\checkpoints\romnistereo32_v21_bs8_prune_step0_final.pth", 
+                        default=r"F:\algo\mvs_v119\checkpoints\romnistereo32_v21_bs8_prune_final.pth", 
                         help="Path to .pth checkpoint (from train_prune_v2.py)")
     parser.add_argument('--output_path', type=str, 
-                        default=r"checkpoints/onnx/romnistereo_pruned_v2_jetson.onnx", 
+                        default=r"checkpoints/onnx/romnistereo32_v21_bs8_prune_final_jetson.onnx", 
                         help="Output ONNX file path")
     parser.add_argument('--opset', type=int, default=11, 
                         help="ONNX opset version (11 for TensorRT compatibility)")
