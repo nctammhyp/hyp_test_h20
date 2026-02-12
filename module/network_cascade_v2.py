@@ -236,7 +236,10 @@ class ROmniStereoCascadeV2(torch.nn.Module):
             stage_iters = stage.iters if iters is None else iters
             for itr in range(stage_iters):
                 invdepth_idx = invdepth_idx.detach()
+                invdepth_idx = torch.nan_to_num(invdepth_idx, nan=0.0, posinf=float(d_stage - 1), neginf=0.0)
+                invdepth_idx = invdepth_idx.clamp(0.0, float(d_stage - 1))
                 corr_feat = corr_fn(invdepth_idx)
+                corr_feat = torch.nan_to_num(corr_feat, nan=0.0, posinf=0.0, neginf=0.0)
                 if itr > 0:
                     context_feat = self.volume_sample(context_feat_volume, invdepth_idx)
                     inp = torch.relu(context_feat)
@@ -245,7 +248,9 @@ class ROmniStereoCascadeV2(torch.nn.Module):
                     net, delta_invdepth_idx, up_mask = update_block(
                         net, inp, corr_feat, invdepth_idx, no_upsample=no_upsample
                     )
+                delta_invdepth_idx = torch.nan_to_num(delta_invdepth_idx, nan=0.0, posinf=0.0, neginf=0.0)
                 invdepth_idx = invdepth_idx + delta_invdepth_idx
+                invdepth_idx = invdepth_idx.clamp(0.0, float(d_stage - 1))
 
                 if (stage_idx == len(self.cascade_stages) - 1) and (up_mask is not None):
                     invdepth_idx_up = self.upsample_invdepth_idx(invdepth_idx, up_mask)
