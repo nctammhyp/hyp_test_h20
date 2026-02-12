@@ -1,6 +1,7 @@
 # network_cascade.py
 # Cascade Cost Volume variant for ROmniStereo
 
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -190,12 +191,17 @@ class ROmniStereoCascade(torch.nn.Module):
                 net = torch.tanh(self.state_conv(context_feat))
 
             match_feat_volume_list = [feat.float() for feat in match_feat_volume_list]
+            d_stage = context_feat_volume.shape[-1]
+            if d_stage <= 1:
+                max_levels = 1
+            else:
+                max_levels = int(math.floor(math.log2(d_stage))) + 1
+            corr_levels = min(self.opts.corr_levels, max_levels)
             corr_fn = CorrBlock1D(*match_feat_volume_list,
                                   dx_buffer=self.corr_dx,
                                   radius=self.opts.corr_radius,
-                                  num_levels=self.opts.corr_levels)
+                                  num_levels=corr_levels)
 
-            d_stage = context_feat_volume.shape[-1]
             if prev_invdepth is None:
                 invdepth_idx = torch.zeros_like(context_feat_volume[:, :1, ..., 0])
             else:
