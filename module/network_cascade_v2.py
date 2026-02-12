@@ -242,18 +242,25 @@ class ROmniStereoCascadeV2(torch.nn.Module):
                 corr_feat = torch.nan_to_num(corr_feat, nan=0.0, posinf=0.0, neginf=0.0)
                 if itr > 0:
                     context_feat = self.volume_sample(context_feat_volume, invdepth_idx)
+                    context_feat = torch.nan_to_num(context_feat, nan=0.0, posinf=0.0, neginf=0.0)
                     inp = torch.relu(context_feat)
+                    inp = torch.nan_to_num(inp, nan=0.0, posinf=0.0, neginf=0.0)
                 with autocast(enabled=self.opts.mixed_precision):
                     no_upsample = (stage_idx < len(self.cascade_stages) - 1) or (test_mode and itr < stage_iters - 1)
                     net, delta_invdepth_idx, up_mask = update_block(
                         net, inp, corr_feat, invdepth_idx, no_upsample=no_upsample
                     )
+                net = torch.nan_to_num(net, nan=0.0, posinf=0.0, neginf=0.0)
                 delta_invdepth_idx = torch.nan_to_num(delta_invdepth_idx, nan=0.0, posinf=0.0, neginf=0.0)
+                max_delta = max(1.0, float(d_stage - 1) * 0.5)
+                delta_invdepth_idx = delta_invdepth_idx.clamp(-max_delta, max_delta)
                 invdepth_idx = invdepth_idx + delta_invdepth_idx
                 invdepth_idx = invdepth_idx.clamp(0.0, float(d_stage - 1))
 
                 if (stage_idx == len(self.cascade_stages) - 1) and (up_mask is not None):
                     invdepth_idx_up = self.upsample_invdepth_idx(invdepth_idx, up_mask)
+                    invdepth_idx_up = torch.nan_to_num(invdepth_idx_up, nan=0.0, posinf=float(self.opts.num_invdepth - 1), neginf=0.0)
+                    invdepth_idx_up = invdepth_idx_up.clamp(0.0, float(self.opts.num_invdepth - 1))
                     invdepth_idx_predictions.append(invdepth_idx_up)
 
             prev_invdepth = invdepth_idx
