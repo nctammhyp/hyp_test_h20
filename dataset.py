@@ -222,8 +222,8 @@ class Dataset(torch.utils.data.Dataset):
             file_path = osp.join(self.db_path, self.img_fmt % (i + 1, fidx))
             I = readImage(file_path)
             # I = cv2.resize(I, (800, 768), interpolation=cv2.INTER_LINEAR)
-            I = cv2.resize(I, (400, 384), interpolation=cv2.INTER_LINEAR)
-            # I = cv2.resize(I, (320, 320), interpolation=cv2.INTER_LINEAR)
+            # I = cv2.resize(I, (400, 384), interpolation=cv2.INTER_LINEAR)
+            I = cv2.resize(I, (320, 320), interpolation=cv2.INTER_LINEAR)
 
 
 
