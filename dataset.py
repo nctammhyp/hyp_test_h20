@@ -90,7 +90,7 @@ class Dataset(torch.utils.data.Dataset):
         opts.gt_depth_fmt = 'omnidepth_gt_%d/%05d.npy'  # [equi_w, fidx]
 
         # opts.equirect_size, opts.num_invdepth = [160, 640], 192
-        opts.equirect_size, opts.num_invdepth = [128, 400], 48
+        opts.equirect_size, opts.num_invdepth = [128, 400], 32
 
         opts.num_downsample = 1
         opts.phi_deg, opts.phi2_deg = 45, -1.0
@@ -222,7 +222,9 @@ class Dataset(torch.utils.data.Dataset):
             file_path = osp.join(self.db_path, self.img_fmt % (i + 1, fidx))
             I = readImage(file_path)
             # I = cv2.resize(I, (800, 768), interpolation=cv2.INTER_LINEAR)
-            I = cv2.resize(I, (400, 384), interpolation=cv2.INTER_LINEAR)
+            # I = cv2.resize(I, (400, 384), interpolation=cv2.INTER_LINEAR)
+            I = cv2.resize(I, (320, 320), interpolation=cv2.INTER_LINEAR)
+
 
 
             if out_raw_imgs: raw_imgs.append(I)

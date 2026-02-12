@@ -11,7 +11,15 @@ Target: Deploy on Jetson Orin Nano with INT4/INT8 quantization.
 - `train_prune_v2.py` - Prune model (saves full model object)
 
 ### Quantization
-- `quantize_int4.py` - INT4 quantization (PTQ + QAT)
+- `quantize_int4.py` - Simple INT4 quantization (PTQ + QAT)
+- `quantize_advanced.py` - Advanced multi-method quantization
+- `quantization/` - Quantization module:
+  - `utils.py` - Core functions (scale/zp, fake_quantize)
+  - `quantizers.py` - MinMax, Percentile, MSE quantizers
+  - `calibration.py` - Calibration data collection
+  - `adaround.py` - AdaRound algorithm
+  - `gptq.py` - GPTQ algorithm
+  - `smoothquant.py` - SmoothQuant (W+A quantization)
 
 ### Export & Inference
 - `export_onnx_jetson_v2.py` - Export to ONNX

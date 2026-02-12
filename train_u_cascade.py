@@ -17,7 +17,6 @@ from tqdm import tqdm
 try:
     from torch.cuda.amp import GradScaler
 except:
-    # dummy GradScaler for PyTorch < 1.6
     class GradScaler:
         def __init__(self):
             pass
@@ -34,22 +33,20 @@ except:
 from dataset import Dataset, MultiDataset
 from utils.common import *
 from utils.image import *
-from module.network import ROmniStereo
+from module.network_cascade import ROmniStereoCascade
 from module.loss_functions import sequence_loss
 
 # Initialize
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.benchmark = True
 
-parser = ArgumentParser(description='Training for ROmniStereo')
+parser = ArgumentParser(description='Training for ROmniStereo Cascade')
 
-parser.add_argument('--name', default='ROmniStereo', help="name of your experiment")
+parser.add_argument('--name', default='ROmniStereoCascade', help="name of your experiment")
 parser.add_argument('--restore_ckpt', help="restore checkpoint")
 parser.add_argument('--pretrain_ckpt', help="pretrained checkpoint for finetuning")
 
 parser.add_argument('--db_root', default='/home/sw-tamnguyen/Desktop/depth_project/datasets/datasets/hyp_synthetic/hyp_data_01_trainable/', type=str, help='path to dataset')
-# parser.add_argument('--db_root', default=r"F:\Full-Dataset\hyp_data\hyp_data_01\hyp_data_01_trainable", type=str, help='path to dataset')
-
 parser.add_argument('--dbname', nargs='+', default=['omnithings'], type=str,
                     choices=['omnithings', 'omnihouse', 'sunny', 'cloudy', 'sunset'],  help='databases to train')
 
@@ -69,6 +66,15 @@ parser.add_argument('--corr_radius', type=int, default=4, help="width of the cor
 
 parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
 parser.add_argument('--fix_bn', action='store_true', help='fix batch normalization')
+
+# cascade options (FPS-focused defaults)
+parser.add_argument('--cascade_s1_downsample', type=int, default=2)
+parser.add_argument('--cascade_s1_depth_stride', type=int, default=4)
+parser.add_argument('--cascade_s1_iters', type=int, default=2)
+parser.add_argument('--cascade_s2_downsample', type=int, default=1)
+parser.add_argument('--cascade_s2_depth_stride', type=int, default=1)
+parser.add_argument('--cascade_s2_iters', type=int, default=1)
+parser.add_argument('--cascade_require_base_stage', action='store_true')
 
 # training options
 parser.add_argument('--total_epochs', type=int, default=30, help='total epochs of training')
@@ -111,6 +117,12 @@ opts.net_opts.corr_radius = args.corr_radius
 opts.net_opts.mixed_precision = args.mixed_precision
 opts.net_opts.fix_bn = args.fix_bn
 
+opts.net_opts.cascade_require_base_stage = args.cascade_require_base_stage
+opts.net_opts.cascade_stages = [
+    {"name": "coarse", "downsample": args.cascade_s1_downsample, "depth_stride": args.cascade_s1_depth_stride, "iters": args.cascade_s1_iters},
+    {"name": "mid", "downsample": args.cascade_s2_downsample, "depth_stride": args.cascade_s2_depth_stride, "iters": args.cascade_s2_iters},
+]
+
 opts.total_epochs = args.total_epochs
 opts.batch_size = args.batch_size
 opts.train_iters = args.train_iters
@@ -123,23 +135,8 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-# def fetch_optimizer(model, num_steps):
-#     """ Create the optimizer and learning rate scheduler """
-#     optimizer = optim.AdamW(model.parameters(), lr=opts.lr, weight_decay=opts.wdecay, eps=1e-8)
-
-#     scheduler = optim.lr_scheduler.OneCycleLR(optimizer, opts.lr, num_steps+100,
-#                                               pct_start=0.01, cycle_momentum=False, anneal_strategy='linear')
-
-#     return optimizer, scheduler
-
-
 def fetch_optimizer(model):
-    """ Create the optimizer and learning rate scheduler """
     optimizer = optim.AdamW(model.parameters(), lr=opts.lr, weight_decay=opts.wdecay, eps=1e-8)
-
-    # scheduler = optim.lr_scheduler.OneCycleLR(optimizer, opts.lr, num_steps+100,
-    #                                           pct_start=0.01, cycle_momentum=False, anneal_strategy='linear')
-
     return optimizer
 
 
@@ -151,16 +148,13 @@ def train(epoch_total, load_state):
     dbloader = torch.utils.data.DataLoader(data, batch_size=opts.batch_size,
                                            pin_memory=True, shuffle=True,
                                            num_workers=0, drop_last=True)
-    total_num_steps = len(data)*opts.total_epochs//opts.batch_size
 
-    net = nn.DataParallel(ROmniStereo(opts.net_opts)).cuda()
+    net = nn.DataParallel(ROmniStereoCascade(opts.net_opts)).cuda()
     if opts.net_opts.fix_bn:
         net.module.freeze_bn()
     LOG_INFO("Parameter Count: %d" % count_parameters(net))
 
-    # optimizer, scheduler = fetch_optimizer(net, total_num_steps)
     optimizer = fetch_optimizer(net)
-
     scaler = GradScaler(enabled=opts.net_opts.mixed_precision)
 
     start_epoch = 0
@@ -199,63 +193,42 @@ def train(epoch_total, load_state):
         LOG_INFO('"%s" directory created' % (opts.runs_dir))
     writer = SummaryWriter(log_dir=opts.runs_dir)
 
-    total_iters = len(data)*start_epoch//opts.batch_size
+    total_iters = len(data) * start_epoch // opts.batch_size
 
     for epoch in range(start_epoch, epoch_total):
-        # training
         net.train()
         train_loss = 0
         epoch_loss = 0
         LOG_INFO('\nEpoch: %d' % epoch)
-        # acc_total=0
-        # for step, data_blob in enumerate(dbloader):
         pbar = tqdm(dbloader, total=len(dbloader), desc=f"Epoch {epoch}")
 
-        # for step, data_blob in enumerate(tqdm(dbloader, total=len(dbloader), desc="Processing")):
         for step, data_blob in enumerate(pbar):
-            start_time = time.time()
             imgs, gt, valid, raw_imgs = data_blob
 
             imgs = [img.cuda() for img in imgs]
             valid = valid.cuda()
             gt = gt.cuda()
 
-            # print(f"img: {imgs[0].shape}")
-            # print(f"grid: {grids[0].shape}")
-
-            # net.zero_grad()
             optimizer.zero_grad()
-
             predictions = net(imgs, grids, opts.train_iters)
-
             loss = sequence_loss(predictions, gt.unsqueeze(1), valid.unsqueeze(1))
 
             train_loss += loss.data
-
             epoch_loss = train_loss / (step + 1)
 
-            # ===== Update tqdm display =====
             pbar.set_postfix({
                 "loss": f"{loss.item():.4f}",
                 "avg": f"{epoch_loss:.4f}"
             })
 
-
-            # if step % 50 == 0:
-            #     LOG_INFO("Iter %d training loss = %.3f, average training loss for every step = %.3f, \
-            #         time = %.2f" % (total_iters, loss, epoch_loss, time.time() - start_time))
-            #     writer.add_scalar("train/loss", loss, total_iters)
-
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             scaler.step(optimizer)
-            # scheduler.step()
             scaler.update()
 
             total_iters += 1
 
-        # logging
         invdepth_idx = torch.clamp(predictions[-1][0][0], 0, opts.net_opts.num_invdepth - 1)
         writer.add_scalar("train/epoch_loss", epoch_loss, total_iters)
         invdepth = data.indexToInvdepth(toNumpy(invdepth_idx))
@@ -263,7 +236,6 @@ def train(epoch_total, load_state):
         vis_img = data.makeVisImage(raw_imgs, invdepth, gt=toNumpy(gt[0]))
         writer.add_image("train/vis", vis_img.transpose(2, 0, 1), total_iters)
 
-        # evaluation
         net.eval()
         eval_list = data.opts.test_idx
         errors = np.zeros((len(eval_list), 5))
@@ -274,10 +246,8 @@ def train(epoch_total, load_state):
             with torch.no_grad():
                 invdepth_idx = net(imgs, grids, opts.valid_iters, test_mode=True)
             invdepth_idx = toNumpy(invdepth_idx[0, 0])
-            # Compute errors
             errors[d, :] = data.evalError(invdepth_idx, gt, valid)
-            # Visualization
-        # logging
+
         invdepth = data.indexToInvdepth(invdepth_idx)
         raw_imgs = [toNumpy(raw) for raw in raw_imgs]
         vis_img = data.makeVisImage(raw_imgs, invdepth, gt=toNumpy(gt))
@@ -292,7 +262,6 @@ def train(epoch_total, load_state):
         LOG_INFO('>1: %.3f, >3: %.3f, >5: %.3f, MAE: %.3f, RMS: %.3f' %
             (mean_errors[0], mean_errors[1], mean_errors[2], mean_errors[3], mean_errors[4]))
 
-        # save
         savefilename = opts.model_dir + '/%s_e%d.pth' % (opts.name, epoch)
         torch.save({
                 'net_state_dict': net.state_dict(),
