@@ -182,6 +182,11 @@ class ROmniStereoCascadeV2(torch.nn.Module):
         scale = float(d_new - 1) / float(d_prev - 1)
         return invdepth_idx * scale
 
+    def _resize_invdepth(self, invdepth_idx, h_new, w_new):
+        if invdepth_idx.shape[-2] == h_new and invdepth_idx.shape[-1] == w_new:
+            return invdepth_idx
+        return F.interpolate(invdepth_idx, size=(h_new, w_new), mode="bilinear", align_corners=True)
+
     def forward(self, imgs, grids, iters=None, test_mode=False):
         with autocast(enabled=self.opts.mixed_precision):
             fisheye_feats = self.encoder(imgs)
@@ -191,6 +196,7 @@ class ROmniStereoCascadeV2(torch.nn.Module):
         invdepth_idx_predictions = []
         prev_invdepth = None
         prev_d = None
+        prev_hw = None
 
         for stage_idx, stage in enumerate(self.cascade_stages):
             stage_grids = self._make_stage_grids(grids, stage.downsample, stage.depth_stride)
@@ -220,7 +226,11 @@ class ROmniStereoCascadeV2(torch.nn.Module):
             if prev_invdepth is None:
                 invdepth_idx = torch.zeros_like(context_feat_volume[:, :1, ..., 0])
             else:
-                invdepth_idx = self._scale_invdepth(prev_invdepth, prev_d, d_stage)
+                h_cur, w_cur = context_feat_volume.shape[-3], context_feat_volume.shape[-2]
+                invdepth_idx = prev_invdepth
+                if prev_hw is not None:
+                    invdepth_idx = self._resize_invdepth(invdepth_idx, h_cur, w_cur)
+                invdepth_idx = self._scale_invdepth(invdepth_idx, prev_d, d_stage)
 
             update_block = self.update_blocks[str(corr_levels)]
             stage_iters = stage.iters if iters is None else iters
@@ -243,6 +253,7 @@ class ROmniStereoCascadeV2(torch.nn.Module):
 
             prev_invdepth = invdepth_idx
             prev_d = d_stage
+            prev_hw = (context_feat_volume.shape[-3], context_feat_volume.shape[-2])
 
         if test_mode:
             if invdepth_idx_predictions:
